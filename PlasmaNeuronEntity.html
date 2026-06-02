@@ -1,0 +1,2199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>PLASMA ENTITY // ECHO MIND</title>
+<meta name="description" content="A living neural organism. 300 Hebbian neurons, formant voice, fractal lightning, and a plasma field that learns from every voice it hears. Speak to it. It remembers.">
+<meta property="og:title" content="PLASMA ENTITY // ECHO MIND">
+<meta property="og:description" content="A living neural organism that learns tonal patterns from every visitor and responds in its own evolving voice.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#04050b">
+<style>
+*,*::before,*::after { box-sizing:border-box; user-select:none; margin:0; padding:0; }
+:root {
+    --bg:#04050b; --panel:#08090f; --border:#1a2030;
+    --accent:#4a7fff; --accent2:#ff4a7f; --mono:'Courier New',monospace;
+}
+/* Theme overrides applied via data-theme on <body> */
+[data-theme="ember"]   { --bg:#0a0400; --panel:#100800; --border:#2a1500; --accent:#ff7a20; --accent2:#ff3060; }
+[data-theme="void"]    { --bg:#000000; --panel:#050505; --border:#111111; --accent:#cc44ff; --accent2:#44ccff; }
+[data-theme="arctic"]  { --bg:#010a10; --panel:#040e16; --border:#0d2030; --accent:#22ddff; --accent2:#2266ff; }
+[data-theme="bio"]     { --bg:#010a03; --panel:#040e06; --border:#0a2010; --accent:#44ff88; --accent2:#aaff22; }
+[data-theme="crimson"] { --bg:#0a0003; --panel:#100006; --border:#2a0010; --accent:#ff2255; --accent2:#ff8822; }
+/* Fullscreen: hide side panel so canvas fills screen */
+body.fullscreen .tab-rail,
+body.fullscreen .side-panel { display:none; }
+body.fullscreen .canvas-area { flex:1; }
+#fsBtn {
+    position:fixed; top:10px; right:10px; z-index:20;
+    font-family:var(--mono); font-size:0.6rem; letter-spacing:1px;
+    text-transform:uppercase; padding:5px 10px;
+    border:2px solid var(--border); background:rgba(0,0,0,0.6);
+    color:#4a5a70; cursor:pointer; transition:0.15s;
+    backdrop-filter:blur(4px);
+}
+#fsBtn:hover { border-color:var(--accent); color:var(--accent); }
+html,body { width:100%; height:100%; overflow:hidden; background:var(--bg); color:#dce8ff; font-family:'Segoe UI',system-ui,sans-serif; }
+
+/* ── SHELL ── */
+.shell { display:flex; width:100vw; height:100vh; }
+
+/* ── TAB RAIL ── */
+.tab-rail {
+    width:46px; min-width:46px; background:var(--panel);
+    border-right:2px solid var(--border);
+    display:flex; flex-direction:column; align-items:center;
+    padding-top:14px; gap:5px; z-index:10;
+}
+.tab-btn {
+    width:34px; height:34px; border:2px solid var(--border);
+    background:transparent; color:#3a4a60;
+    font-family:var(--mono); font-size:0.6rem; font-weight:bold;
+    cursor:pointer; transition:0.15s; line-height:1.1; text-align:center;
+}
+.tab-btn:hover,.tab-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(74,127,255,0.08); }
+
+/* ── CANVAS AREA ── */
+.canvas-area {
+    flex:2; min-width:0; position:relative;
+    background:radial-gradient(ellipse at 38% 32%, #080c18, #010205);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+}
+#brainCanvas,#plasmaCanvas,#rippleCanvas,#isoCanvas {
+    position:absolute; border-radius:50%;
+    width:min(90vmin,700px); height:min(90vmin,700px);
+}
+#brainCanvas  { z-index:1; background:radial-gradient(circle,#0c0f1e,#000); }
+#plasmaCanvas { z-index:2; pointer-events:none; }
+#rippleCanvas { z-index:3; pointer-events:none; }
+#isoCanvas    { z-index:4; pointer-events:none; display:none; }
+.emotion-overlay {
+    position:absolute; bottom:18px; left:50%; transform:translateX(-50%);
+    font-family:var(--mono); font-size:0.68rem; letter-spacing:3px;
+    padding:5px 18px; background:rgba(0,0,0,0.65); backdrop-filter:blur(6px);
+    border:1px solid rgba(100,150,255,0.25); z-index:5;
+    text-transform:uppercase; font-weight:bold; white-space:nowrap;
+    transition:color 0.5s, border-color 0.5s;
+}
+
+/* ── SIDE PANEL ── */
+.side-panel {
+    flex:1; min-width:300px; max-width:390px;
+    background:rgba(8,9,15,0.96); border-left:2px solid var(--border);
+    display:flex; flex-direction:column; overflow:hidden;
+}
+.panel-header {
+    font-family:var(--mono); font-size:0.58rem; letter-spacing:2px;
+    color:#2a3550; padding:7px 14px; border-bottom:2px solid var(--border);
+    display:flex; justify-content:space-between; align-items:center;
+    text-transform:uppercase; flex-shrink:0;
+}
+.panel-content { display:none; flex-direction:column; height:100%; overflow-y:auto; padding:12px; gap:10px; }
+.panel-content.active { display:flex; }
+
+/* ── BLOCKS ── */
+.blk { border:2px solid var(--border); background:rgba(0,0,0,0.3); padding:9px 11px; }
+.blk-title {
+    font-family:var(--mono); font-size:0.58rem; letter-spacing:2px;
+    color:#3a4a60; text-transform:uppercase; border-bottom:1px solid var(--border);
+    margin-bottom:8px; padding-bottom:4px;
+}
+.stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+.stat-cell {
+    font-family:var(--mono); font-size:0.68rem;
+    background:rgba(0,0,0,0.4); border:1px solid var(--border);
+    padding:4px 7px; display:flex; justify-content:space-between;
+}
+.stat-val { color:var(--accent); font-weight:bold; }
+
+/* ── BUTTONS ── */
+.btn-row { display:flex; flex-wrap:wrap; gap:6px; }
+.btn {
+    font-family:var(--mono); font-size:0.62rem; letter-spacing:1px;
+    text-transform:uppercase; padding:5px 11px;
+    border:2px solid var(--border); background:transparent;
+    color:#dce8ff; cursor:pointer; transition:0.15s; font-weight:bold;
+}
+.btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(74,127,255,0.07); }
+.btn.primary { border-color:var(--accent); color:var(--accent); }
+.btn.danger  { border-color:var(--accent2); color:var(--accent2); }
+
+/* ── PATTERN LIST ── */
+.pattern-list { display:flex; flex-direction:column; gap:5px; max-height:190px; overflow-y:auto; }
+.pattern-row {
+    font-family:var(--mono); font-size:0.63rem;
+    background:rgba(0,0,0,0.4); border:1px solid var(--border);
+    padding:5px 8px; display:flex; align-items:center; gap:8px; cursor:pointer;
+}
+.pattern-row:hover { border-color:var(--accent); color:var(--accent); }
+.str-bar { flex:1; height:3px; background:var(--border); }
+.str-fill { height:100%; background:var(--accent); transition:width 0.4s; }
+
+/* ── LOG ── */
+.log-box {
+    font-family:var(--mono); font-size:0.63rem; line-height:1.55;
+    background:#020308; border:1px solid var(--border);
+    padding:7px; max-height:200px; overflow-y:auto; color:#6a80a0;
+}
+.log-box .hi { color:#aac8ff; }
+
+/* ── MISC ── */
+#spectrumCanvas { width:100%; height:54px; display:block; background:#020308; border:1px solid var(--border); }
+input[type=range] { width:100%; accent-color:var(--accent); margin-top:5px; }
+label { font-family:var(--mono); font-size:0.62rem; color:#4a5a70; display:flex; align-items:center; gap:6px; cursor:pointer; }
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-thumb { background:var(--border); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- FULLSCREEN TOGGLE -->
+  <button id="fsBtn" title="Toggle fullscreen">[ ]</button>
+
+  <!-- TAB RAIL -->
+  <div class="tab-rail">
+    <button class="tab-btn active" data-tab="0" title="Status">ST<br>AT</button>
+    <button class="tab-btn" data-tab="1" title="Memory">ME<br>M</button>
+    <button class="tab-btn" data-tab="2" title="Voice">VO<br>ICE</button>
+    <button class="tab-btn" data-tab="3" title="Log">LO<br>G</button>
+    <button class="tab-btn" data-tab="4" title="Visuals">VI<br>Z</button>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-area">
+    <canvas id="brainCanvas"  width="700" height="700"></canvas>
+    <canvas id="plasmaCanvas" width="700" height="700"></canvas>
+    <canvas id="rippleCanvas" width="700" height="700"></canvas>
+    <canvas id="isoCanvas"    width="700" height="700"></canvas>
+    <div class="emotion-overlay" id="emotionOverlay">IDLE</div>
+    <div id="viewLabel" style="position:absolute;top:14px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:0.58rem;letter-spacing:2px;color:#2a3550;text-transform:uppercase;z-index:6;">PLASMA SPHERE</div>
+  </div>
+
+  <!-- SIDE PANEL -->
+  <div class="side-panel">
+    <div class="panel-header">
+      <span>PLASMA ENTITY // ECHO MIND v3</span>
+      <span id="persistBadge" style="border:1px solid #1a2a4a;padding:2px 7px;font-size:0.55rem;">MEM: 0</span>
+      <span id="onlineBadge" style="border:1px solid #1a3a1a;padding:2px 7px;font-size:0.55rem;color:#44ff88;">● 1</span>
+    </div>
+
+    <!-- TAB 0: STATUS -->
+    <div class="panel-content active" id="tab-0">
+      <div class="blk">
+        <div class="blk-title">01 // SENSORS</div>
+        <div class="btn-row">
+          <button class="btn primary" id="startBtn">ENABLE</button>
+          <button class="btn danger"  id="stopBtn">DISABLE</button>
+        </div>
+      </div>
+      <div class="blk">
+        <div class="blk-title">02 // LIVE METRICS</div>
+        <div class="stats-grid">
+          <div class="stat-cell">AUDIO  <span class="stat-val" id="audio">0.000</span></div>
+          <div class="stat-cell">MOTION <span class="stat-val" id="motion">0.000</span></div>
+          <div class="stat-cell">EXCITE <span class="stat-val" id="excite">0.000</span></div>
+          <div class="stat-cell">HUE    <span class="stat-val" id="hue">0</span></div>
+        </div>
+      </div>
+      <div class="blk">
+        <div class="blk-title">02b // COLLECTIVE MIND</div>
+        <div class="stats-grid">
+          <div class="stat-cell">SHARED PAT <span class="stat-val" id="sharedPatCount">—</span></div>
+          <div class="stat-cell">ONLINE <span class="stat-val" id="onlineCount">1</span></div>
+          <div class="stat-cell">TOTAL HEARD <span class="stat-val" id="totalHeard">—</span></div>
+          <div class="stat-cell">MIMICRY <span class="stat-val" id="totalMimicry">—</span></div>
+        </div>
+        <div id="syncStatus" style="font-family:var(--mono);font-size:0.58rem;color:#2a3a50;margin-top:5px;">Connecting to collective memory…</div>
+      </div>
+      <div class="blk">
+        <div class="blk-title">03 // EMOTION STATE</div>
+        <div id="emotionBlock" style="font-family:var(--mono);font-size:0.9rem;text-align:center;padding:7px 0;letter-spacing:3px;transition:color 0.5s;">IDLE</div>
+        <div id="emotionDesc" style="font-family:var(--mono);font-size:0.58rem;color:#2a3a50;margin-top:4px;line-height:1.5;">Entity at rest. Awaiting sensory input.</div>
+      </div>
+      <div class="blk">
+        <div class="blk-title">03b // CELL ASSEMBLIES</div>
+        <div id="assemblyStats" style="font-family:var(--mono);font-size:0.63rem;color:var(--accent);padding:4px 0;">No active assemblies</div>
+        <div style="font-family:var(--mono);font-size:0.58rem;color:#2a3550;margin-top:4px;line-height:1.5;">Co-firing neuron groups detected in real time. Each assembly glows a distinct colour.</div>
+      </div>
+      <div class="blk">
+        <div class="blk-title">04 // MASTER VOLUME</div>
+        <input type="range" id="masterVol" min="0" max="200" value="160">
+        <div style="font-family:var(--mono);font-size:0.6rem;color:#3a4a60;margin-top:3px;display:flex;justify-content:space-between;">
+          <span id="volValue">100%</span><span>max +6dB</span>
+        </div>
+      </div>
+      <div class="blk">
+        <div class="blk-title">05 // SPECTRUM</div>
+        <canvas id="spectrumCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- TAB 1: MEMORY -->
+    <div class="panel-content" id="tab-1">
+      <div class="blk">
+        <div class="blk-title">06 // TONAL PATTERNS — <span id="memoryCount">0</span></div>
+        <div class="pattern-list" id="patternList">
+          <div style="font-family:var(--mono);font-size:0.63rem;color:#2a3550;">— speak into mic to begin learning —</div>
+        </div>
+      </div>
+      <div class="blk">
+        <div class="blk-title">06b // SIGNATURE SOUNDS ⭐</div>
+        <div id="favouritesList" style="font-family:var(--mono);font-size:0.63rem;color:#2a3550;display:flex;flex-direction:column;gap:5px;">
+          — no favourites yet (heard 8× at strength ≥1.4) —
+        </div>
+        <div style="font-family:var(--mono);font-size:0.58rem;color:#2a3550;margin-top:5px;line-height:1.5;">Patterns the entity has heard often enough to call its own. Click to replay.</div>
+      </div>
+      <div class="blk">
+        <div class="blk-title">07 // MEMORY CONTROLS</div>
+        <div class="btn-row">
+          <button class="btn danger"   id="clearMemBtn">CLEAR</button>
+          <button class="btn"          id="saveMemBtn">SAVE</button>
+          <button class="btn primary"  id="loadMemBtn">LOAD</button>
+        </div>
+        <div id="memStatus" style="font-family:var(--mono);font-size:0.58rem;color:#2a3550;margin-top:6px;">Click a pattern to force playback.</div>
+      </div>
+      <div class="blk">
+        <div class="blk-title">08 // FORGETTING RATE</div>
+        <input type="range" id="forgetRate" min="0" max="100" value="12">
+        <div style="font-family:var(--mono);font-size:0.58rem;color:#2a3550;margin-top:3px;">Higher = faster memory decay</div>
+      </div>
+    </div>
+
+    <!-- TAB 2: VOICE -->
+    <div class="panel-content" id="tab-2">
+      <div class="blk">
+        <div class="blk-title">09 // FORMANT VOWELS</div>
+        <div class="btn-row">
+          <button class="btn" id="vowelA">/ɑ/</button>
+          <button class="btn" id="vowelE">/ɛ/</button>
+          <button class="btn" id="vowelI">/i/</button>
+          <button class="btn" id="vowelO">/ɔ/</button>
+          <button class="btn" id="vowelU">/u/</button>
+        </div>
+      </div>
+      <div class="blk">
+        <div class="blk-title">10 // EXPRESSIVE TRIGGERS</div>
+        <div class="btn-row">
+          <button class="btn primary" id="chirpBtn">RESPOND</button>
+          <button class="btn" id="gruntBtn">GRUNT</button>
+          <button class="btn" id="sweepBtn">SWEEP</button>
+          <button class="btn" id="dreamBtn">DREAM</button>
+          <button class="btn" id="alertBtn">ALERT</button>
+        </div>
+        <div id="lastResponse" style="font-family:var(--mono);font-size:0.68rem;color:var(--accent);margin-top:8px;">—</div>
+      </div>
+      <div class="blk">
+        <div class="blk-title">11 // RESPONSE DELAY</div>
+        <input type="range" id="delayRange" min="5" max="45" step="0.5" value="18">
+        <div style="font-family:var(--mono);font-size:0.6rem;color:#3a4a60;margin-top:3px;display:flex;justify-content:space-between;">
+          <span>delay after hearing</span><span id="delayVal">18.0 s</span>
+        </div>
+      </div>
+      <div class="blk">
+        <div class="blk-title">12 // PARAMETERS</div>
+        <label style="margin-bottom:6px;">PITCH VARIATION
+          <input type="range" id="pitchVar" min="0" max="100" value="30">
+        </label>
+        <label style="margin-bottom:6px;">CHIRP RATE
+          <input type="range" id="chirpRate" min="0" max="100" value="50">
+        </label>
+        <label><input type="checkbox" id="proactiveToggle" checked> PROACTIVE IMPROV (idle)</label>
+      </div>
+    </div>
+
+    <!-- TAB 3: LOG -->
+    <div class="panel-content" id="tab-3">
+      <div class="blk" style="flex:1;">
+        <div class="blk-title">13 // REASONING FEED</div>
+        <div class="log-box" id="log" style="max-height:none;height:calc(100vh - 140px);"></div>
+      </div>
+    </div>
+
+    <!-- TAB 4: VISUALS -->
+    <div class="panel-content" id="tab-4">
+      <div class="blk">
+        <div class="blk-title">14 // FULLSCREEN</div>
+        <div class="btn-row">
+          <button class="btn primary" id="fsBtnPanel">TOGGLE FULLSCREEN</button>
+        </div>
+        <div style="font-family:var(--mono);font-size:0.58rem;color:#2a3550;margin-top:6px;">Also accessible via [ ] button top-right at all times.</div>
+      </div>
+
+      <div class="blk">
+        <div class="blk-title">15 // THEME</div>
+        <div class="btn-row" id="themeRow">
+          <button class="btn primary" data-theme="default">DEFAULT</button>
+          <button class="btn" data-theme="ember">EMBER</button>
+          <button class="btn" data-theme="void">VOID</button>
+          <button class="btn" data-theme="arctic">ARCTIC</button>
+          <button class="btn" data-theme="bio">BIO</button>
+          <button class="btn" data-theme="crimson">CRIMSON</button>
+        </div>
+      </div>
+
+      <div class="blk">
+        <div class="blk-title">14b // VIEW</div>
+        <div class="btn-row">
+          <button class="btn primary" id="viewToggleBtn">ISO GRID VIEW</button>
+        </div>
+        <div style="font-family:var(--mono);font-size:0.58rem;color:#2a3550;margin-top:6px;">Toggle between plasma sphere and isometric neural grid.</div>
+      </div>
+
+      <div class="blk">
+        <div class="blk-title">14c // 3D ROTATION</div>
+        <label>ROT X (pitch)
+          <input type="range" id="rotSpeedX" min="-100" max="100" value="0">
+        </label>
+        <div style="font-family:var(--mono);font-size:0.58rem;color:#3a4a60;margin-top:2px;display:flex;justify-content:space-between;">
+          <span>←</span><span id="rotSpeedXVal">0</span><span>→</span>
+        </div>
+        <label style="margin-top:8px;">ROT Y (yaw)
+          <input type="range" id="rotSpeedY" min="-100" max="100" value="20">
+        </label>
+        <div style="font-family:var(--mono);font-size:0.58rem;color:#3a4a60;margin-top:2px;display:flex;justify-content:space-between;">
+          <span>←</span><span id="rotSpeedYVal">20</span><span>→</span>
+        </div>
+        <label style="margin-top:8px;">ROT Z (roll)
+          <input type="range" id="rotSpeedZ" min="-100" max="100" value="0">
+        </label>
+        <div style="font-family:var(--mono);font-size:0.58rem;color:#3a4a60;margin-top:2px;display:flex;justify-content:space-between;">
+          <span>←</span><span id="rotSpeedZVal">0</span><span>→</span>
+        </div>
+        <label style="margin-top:8px;">ZOOM
+          <input type="range" id="sphereZoom" min="30" max="200" value="100">
+        </label>
+        <div style="font-family:var(--mono);font-size:0.58rem;color:#3a4a60;margin-top:2px;display:flex;justify-content:space-between;">
+          <span>out</span><span id="sphereZoomVal">100%</span><span>in</span>
+        </div>
+      </div>
+
+      <div class="blk">
+        <div class="blk-title">16 // NEURON BLOB</div>
+        <label>RADIUS SCALE
+          <input type="range" id="neuronRadius" min="20" max="300" value="100">
+        </label>
+        <div style="font-family:var(--mono);font-size:0.58rem;color:#3a4a60;margin-top:2px;display:flex;justify-content:space-between;">
+          <span>tight</span><span id="neuronRadiusVal">100%</span><span>diffuse</span>
+        </div>
+        <label style="margin-top:8px;">PEAK ALPHA
+          <input type="range" id="neuronAlpha" min="10" max="200" value="100">
+        </label>
+        <div style="font-family:var(--mono);font-size:0.58rem;color:#3a4a60;margin-top:2px;display:flex;justify-content:space-between;">
+          <span>ghost</span><span id="neuronAlphaVal">100%</span><span>bright</span>
+        </div>
+      </div>
+
+      <div class="blk">
+        <div class="blk-title">17 // PLASMA FIELD</div>
+        <label>SPRITE SCALE
+          <input type="range" id="plasmaScale" min="20" max="300" value="100">
+        </label>
+        <div style="font-family:var(--mono);font-size:0.58rem;color:#3a4a60;margin-top:2px;display:flex;justify-content:space-between;">
+          <span>minimal</span><span id="plasmaScaleVal">100%</span><span>dense</span>
+        </div>
+        <label style="margin-top:8px;">PLASMA BRIGHTNESS
+          <input type="range" id="plasmaBright" min="20" max="250" value="100">
+        </label>
+        <div style="font-family:var(--mono);font-size:0.58rem;color:#3a4a60;margin-top:2px;display:flex;justify-content:space-between;">
+          <span>dim</span><span id="plasmaBrightVal">100%</span><span>bloom</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════════
+//  PLASMA ENTITY // ECHO MIND v3
+//  Merged & extended from two lineages:
+//   v2-enhanced : Hebbian synapses, afterglow, expressive contour engine,
+//                 fractal lightning, brutalist UI, parabolic pitch detect
+//   300Neurons  : FormantVoice (F1/F2 bandpass), 580-sprite plasma field,
+//                 delayed mimicry, proactive improvisation, forgetting rate,
+//                 master gain node
+//  New in v3    : Formant contour transforms (vowel changes per emotion),
+//                 plasma field responds to lightning events, unified audio
+//                 routing, pending-response visual indicator
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── CANVAS SETUP ────────────────────────────────────────────────────────
+const brainCanvas  = document.getElementById('brainCanvas');
+const ctx          = brainCanvas.getContext('2d');
+brainCanvas.width  = brainCanvas.height = 700;
+
+const plasmaCanvas = document.getElementById('plasmaCanvas');
+const pctx         = plasmaCanvas.getContext('2d');
+plasmaCanvas.width = plasmaCanvas.height = 700;
+
+const rippleCanvas = document.getElementById('rippleCanvas');
+const rctx         = rippleCanvas.getContext('2d');
+rippleCanvas.width = rippleCanvas.height = 700;
+
+const specEl = document.getElementById('spectrumCanvas');
+const sctx   = specEl.getContext('2d');
+
+const CX = 350, CY = 350;
+
+// ── NEURON NETWORK ───────────────────────────────────────────────────────
+// ── 30×30 GRID — 900 NEURONS ────────────────────────────────────────────
+// Neurons are laid out on a regular 30×30 grid mapped onto a sphere surface.
+// Grid locality means co-firing neighbours are spatially adjacent, making
+// Hebbian cell assemblies visually coherent rectangular patches.
+const GRID_W = 30, GRID_H = 30;
+const NCOUNT = GRID_W * GRID_H;   // 900
+const SPHERE_R = 290;
+const neurons = [];
+
+for (let row = 0; row < GRID_H; row++) {
+    for (let col = 0; col < GRID_W; col++) {
+        // Map grid (col,row) to spherical coords via equirectangular projection
+        const phi   = (row / (GRID_H - 1)) * Math.PI;           // 0 → π (pole to pole)
+        const theta = (col / (GRID_W - 1)) * Math.PI * 2;       // 0 → 2π
+        const bx = SPHERE_R * Math.sin(phi) * Math.cos(theta);
+        const by = SPHERE_R * Math.cos(phi);
+        const bz = SPHERE_R * Math.sin(phi) * Math.sin(theta);
+        neurons.push({
+            x: CX + bx, y: CY + by,   // initial projected coords
+            bx, by, bz,                // fixed 3D base coords
+            gridRow: row, gridCol: col, // grid position for neighbour lookup
+            potential: Math.random() * 0.18,
+            threshold: 0.48 + Math.random() * 0.38,
+            links: [],
+            lastFired: -999,
+            assemblyId: -1             // assigned by cell assembly detector
+        });
+    }
+}
+
+// Wire each neuron to its 4 grid neighbours + 2 long-range random links
+// Grid neighbours create local propagation; long-range links create global binding
+for (let i = 0; i < NCOUNT; i++) {
+    const n = neurons[i];
+    const row = n.gridRow, col = n.gridCol;
+    const neighbours = [];
+    // 4-connected grid neighbours (toroidal wrap)
+    const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+    for (const [dr,dc] of dirs) {
+        const nr = (row + dr + GRID_H) % GRID_H;
+        const nc = (col + dc + GRID_W) % GRID_W;
+        neighbours.push(nr * GRID_W + nc);
+    }
+    // 2 random long-range connections
+    for (let k = 0; k < 2; k++) {
+        neighbours.push(Math.floor(Math.random() * NCOUNT));
+    }
+    for (const t of neighbours) {
+        if (t !== i && !n.links.find(l => l.target === t))
+            n.links.push({ target: t, weight: 0.08 + Math.random() * 0.22 });
+    }
+}
+
+const edges = [];
+const edgeSet = new Set();
+for (let i = 0; i < NCOUNT; i++) {
+    for (const lnk of neurons[i].links) {
+        const key = i < lnk.target ? `${i}-${lnk.target}` : `${lnk.target}-${i}`;
+        if (!edgeSet.has(key)) { edgeSet.add(key); edges.push({ a: i, b: lnk.target, w: lnk }); }
+    }
+}
+
+// ── PLASMA SPRITE FIELD ──────────────────────────────────────────────────
+// Three sprite tiers:
+//   CORE   — small bright orbs, tightly clustered, fast pulse
+//   DRIFT  — medium wispy blobs, slow drift, wide hue spread
+//   BLOOM  — large diffuse glow patches, very slow, drawn with 'lighter'
+const SPRITE_TIERS = [
+    { count:320, sizeMin:1.5, sizeMax:4.0, speedMax:0.45, alphaMin:0.55, alphaMax:0.90, pulseMin:0.03, pulseMax:0.07, tier:'core'  },
+    { count:220, sizeMin:3.0, sizeMax:7.5, speedMax:0.22, alphaMin:0.25, alphaMax:0.55, pulseMin:0.01, pulseMax:0.03, tier:'drift' },
+    { count:80,  sizeMin:8.0, sizeMax:22,  speedMax:0.10, alphaMin:0.08, alphaMax:0.22, pulseMin:0.005,pulseMax:0.015,tier:'bloom' },
+];
+const sprites = [];
+function initSprites() {
+    for (const tier of SPRITE_TIERS) {
+        for (let i = 0; i < tier.count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const r     = Math.pow(Math.random(), 0.7) * 310;
+            sprites.push({
+                x: CX + Math.cos(angle) * r,
+                y: CY + Math.sin(angle) * r,
+                vx: (Math.random() - 0.5) * tier.speedMax,
+                vy: (Math.random() - 0.5) * tier.speedMax,
+                size: tier.sizeMin + Math.random() * (tier.sizeMax - tier.sizeMin),
+                baseAlpha: tier.alphaMin + Math.random() * (tier.alphaMax - tier.alphaMin),
+                hueShift: Math.random() * 360,
+                pulseSpeed: tier.pulseMin + Math.random() * (tier.pulseMax - tier.pulseMin),
+                tier: tier.tier,
+                // idle drift: slow sinusoidal wandering even with no audio
+                driftAngle: Math.random() * Math.PI * 2,
+                driftSpeed: 0.004 + Math.random() * 0.008
+            });
+        }
+    }
+}
+function updateSprites() {
+    for (const s of sprites) {
+        // ── 1. Idle orbital drift — each sprite orbits a personal angle ──
+        s.driftAngle += s.driftSpeed;
+        const idleFx = Math.cos(s.driftAngle) * 0.025;
+        const idleFy = Math.sin(s.driftAngle) * 0.025;
+
+        let fx = idleFx, fy = idleFy;
+
+        // ── 2. Radial pressure — replaces centre-pull with a target-radius shell ──
+        // Each tier has a preferred radial band. Sprites outside it are pushed in,
+        // sprites inside it are pushed out. This keeps them spread across the sphere.
+        const targetR = s.tier === 'bloom'  ? 200 + Math.sin(s.hueShift) * 80
+                      : s.tier === 'drift'  ? 155 + Math.sin(s.hueShift * 0.7) * 90
+                      :                       100 + Math.sin(s.hueShift * 1.3) * 110;
+        const rad  = Math.hypot(s.x - CX, s.y - CY);
+        const ang  = Math.atan2(s.y - CY, s.x - CX);
+        const diff = rad - targetR;          // +ve = too far out, -ve = too far in
+        const pressure = -diff * 0.0012;     // restoring force toward shell
+        fx += Math.cos(ang) * pressure;
+        fy += Math.sin(ang) * pressure;
+
+        // ── 3. Tangential swirl — slow rotation around centre ──
+        const swirlStr = s.tier === 'bloom' ? 0.008 : s.tier === 'drift' ? 0.012 : 0.018;
+        fx += -Math.sin(ang) * swirlStr;     // perpendicular to radius = rotation
+        fy +=  Math.cos(ang) * swirlStr;
+
+        // ── 4. Neural attraction — active neurons pull nearby sprites ──
+        for (const n of neurons) {
+            if (n.potential < 0.10) continue;
+            const dx = n.x - s.x, dy = n.y - s.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < 5000) {
+                const inf = n.potential * 0.08;
+                fx += dx * inf / (d2 + 50);
+                fy += dy * inf / (d2 + 50);
+            }
+        }
+
+        // ── 5. Integrate ──
+        const drag  = s.tier === 'bloom' ? 0.988 : s.tier === 'drift' ? 0.980 : 0.972;
+        const noise = s.tier === 'bloom' ? 0.015 : s.tier === 'drift' ? 0.035 : 0.055;
+        s.vx = (s.vx + fx + (Math.random() - 0.5) * noise) * drag;
+        s.vy = (s.vy + fy + (Math.random() - 0.5) * noise) * drag;
+        s.x += s.vx; s.y += s.vy;
+
+        // Hard boundary at sphere edge — elastic bounce
+        const radFinal = Math.hypot(s.x - CX, s.y - CY);
+        if (radFinal > 336) {
+            const a2 = Math.atan2(s.y - CY, s.x - CX);
+            s.x = CX + Math.cos(a2) * 334;
+            s.y = CY + Math.sin(a2) * 334;
+            // Reflect velocity inward
+            const dot = s.vx * Math.cos(a2) + s.vy * Math.sin(a2);
+            s.vx -= 1.6 * dot * Math.cos(a2);
+            s.vy -= 1.6 * dot * Math.sin(a2);
+        }
+    }
+    while (sprites.length > 680) sprites.shift();
+}
+function drawSprites() {
+    pctx.clearRect(0, 0, 700, 700);
+    const baseHue = (moodHue + (EMOTIONS[currentEmotion]?.hueShift || 0) + 360) % 360;
+    // Always-on idle excitation floor so sprites are visible even in silence
+    const excFloor  = 0.28;
+    const exc       = Math.max(globalExcitation, excFloor);
+    const pScale    = (parseFloat(document.getElementById('plasmaScale')?.value)  || 100) / 100;
+    const pBright   = (parseFloat(document.getElementById('plasmaBright')?.value) || 100) / 100;
+
+    // ── BLOOM tier: drawn first with 'lighter' for additive glow ──
+    pctx.globalCompositeOperation = 'lighter';
+    for (const s of sprites) {
+        if (s.tier !== 'bloom') continue;
+        const pulse = 0.5 + Math.sin(frame * s.pulseSpeed + s.hueShift) * 0.4;
+        const alpha = Math.min(s.baseAlpha * (0.6 + exc * 0.7) * pulse * pBright, 0.55);
+        const size  = s.size * (0.8 + exc * 0.5 + Math.sin(frame * 0.012 + s.hueShift) * 0.2) * pScale;
+        const hue   = (baseHue + s.hueShift * 0.18 + exc * 40) % 360;
+        const g = pctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, size);
+        g.addColorStop(0,   `hsla(${hue},100%,80%,${alpha})`);
+        g.addColorStop(0.4, `hsla(${hue},90%,60%,${alpha * 0.5})`);
+        g.addColorStop(1,   `hsla(${hue},80%,40%,0)`);
+        pctx.beginPath(); pctx.arc(s.x, s.y, size, 0, Math.PI * 2);
+        pctx.fillStyle = g; pctx.fill();
+    }
+    pctx.globalCompositeOperation = 'source-over';
+
+    // ── DRIFT tier ──
+    for (const s of sprites) {
+        if (s.tier !== 'drift') continue;
+        const pulse = 0.6 + Math.sin(frame * s.pulseSpeed + s.hueShift) * 0.35;
+        const alpha = Math.min(s.baseAlpha * (0.55 + exc * 0.6) * pulse * pBright, 0.88);
+        const size  = s.size * (0.8 + exc * 0.45 + Math.sin(frame * 0.022 + s.x * 0.008) * 0.15) * pScale;
+        const hue   = (baseHue + s.hueShift * 0.22 + exc * 50) % 360;
+        pctx.beginPath(); pctx.arc(s.x, s.y, size, 0, Math.PI * 2);
+        pctx.fillStyle = `hsla(${hue},90%,62%,${alpha})`; pctx.fill();
+        // inner highlight
+        pctx.beginPath(); pctx.arc(s.x - size * 0.2, s.y - size * 0.15, size * 0.35, 0, Math.PI * 2);
+        pctx.fillStyle = `hsla(${hue},100%,88%,${alpha * 0.45})`; pctx.fill();
+    }
+
+    // ── CORE tier: drawn last, on top, with additive blend for brightness ──
+    pctx.globalCompositeOperation = 'lighter';
+    for (const s of sprites) {
+        if (s.tier !== 'core') continue;
+        const pulse = 0.55 + Math.sin(frame * s.pulseSpeed + s.hueShift) * 0.4;
+        const alpha = Math.min(s.baseAlpha * (0.5 + exc * 0.7) * pulse * pBright, 1.0);
+        const size  = s.size * (0.85 + exc * 0.55 + Math.sin(frame * 0.035 + s.x * 0.012) * 0.12) * pScale;
+        const hue   = (baseHue + s.hueShift * 0.15 + exc * 60) % 360;
+        pctx.beginPath(); pctx.arc(s.x, s.y, size, 0, Math.PI * 2);
+        pctx.fillStyle = `hsla(${hue},100%,75%,${alpha})`; pctx.fill();
+        // bright specular dot
+        pctx.beginPath(); pctx.arc(s.x - size * 0.25, s.y - size * 0.2, size * 0.3, 0, Math.PI * 2);
+        pctx.fillStyle = `hsla(${(hue+30)%360},100%,95%,${alpha * 0.7})`; pctx.fill();
+    }
+    pctx.globalCompositeOperation = 'source-over';
+
+    // ── Global bloom veil ──
+    const grad = pctx.createRadialGradient(CX, CY, 30, CX, CY, 340);
+    grad.addColorStop(0,   `hsla(${baseHue},85%,60%,${0.06 + exc * 0.08})`);
+    grad.addColorStop(0.5, `hsla(${(baseHue+40)%360},75%,45%,${0.03 + exc * 0.04})`);
+    grad.addColorStop(1,   `hsla(${baseHue},70%,35%,0)`);
+    pctx.globalCompositeOperation = 'lighter';
+    pctx.fillStyle = grad; pctx.fillRect(0, 0, 700, 700);
+    pctx.globalCompositeOperation = 'source-over';
+}
+
+// ── GLOBAL STATE ─────────────────────────────────────────────────────────
+let audioLevel = 0, motionLevel = 0, moodHue = 210, globalExcitation = 0;
+let previousFrame = null;
+let audioCtx = null, mediaStream = null, audioAnalyser = null, spectrumData = null;
+let masterGainNode = null;
+let sensorsActive = false;
+let frame = 0;
+let currentEmotion = 'IDLE';
+
+// ── 3D ROTATION STATE ───────────────────────────────────────────────────────────────
+let rotX = 0, rotY = 0, rotZ = 0;
+
+function project3D(x3, y3, z3) {
+    const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+    let x1 = x3 * cosY + z3 * sinY;
+    let z1 = -x3 * sinY + z3 * cosY;
+    let y1 = y3;
+    const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+    let y2 = y1 * cosX - z1 * sinX;
+    let z2 = y1 * sinX + z1 * cosX;
+    let x2 = x1;
+    const cosZ = Math.cos(rotZ), sinZ = Math.sin(rotZ);
+    let xf = x2 * cosZ - y2 * sinZ;
+    let yf = x2 * sinZ + y2 * cosZ;
+    const zoom  = (parseFloat(document.getElementById('sphereZoom')?.value) || 100) / 100;
+    const focal = 900 * zoom;
+    const zOff  = focal + z2 * 0.5;
+    const scale = focal / Math.max(zOff, 100);
+    return { sx: CX + xf * scale, sy: CY + yf * scale, scale, depth: z2 };
+}
+
+function updateRotation() {
+    const sx = parseFloat(document.getElementById('rotSpeedX')?.value || 0);
+    const sy = parseFloat(document.getElementById('rotSpeedY')?.value || 0);
+    const sz = parseFloat(document.getElementById('rotSpeedZ')?.value || 0);
+    rotX += sx * 0.00008;
+    rotY += sy * 0.00008;
+    rotZ += sz * 0.00008;
+}
+
+// ── VIEW TOGGLE ───────────────────────────────────────────────────────────────
+let isoViewActive = false;
+const isoCanvas = document.getElementById('isoCanvas');
+const ictx      = isoCanvas.getContext('2d');
+isoCanvas.width = isoCanvas.height = 700;
+
+function toggleView() {
+    isoViewActive = !isoViewActive;
+    brainCanvas.style.display  = isoViewActive ? 'none' : 'block';
+    plasmaCanvas.style.display = isoViewActive ? 'none' : 'block';
+    rippleCanvas.style.display = isoViewActive ? 'none' : 'block';
+    isoCanvas.style.display    = isoViewActive ? 'block' : 'none';
+    const btn   = document.getElementById('viewToggleBtn');
+    const label = document.getElementById('viewLabel');
+    if (btn)   btn.textContent   = isoViewActive ? 'PLASMA SPHERE' : 'ISO GRID VIEW';
+    if (label) label.textContent = isoViewActive ? 'ISOMETRIC GRID' : 'PLASMA SPHERE';
+    addLog(`🔄 view → ${isoViewActive ? 'ISOMETRIC GRID' : 'PLASMA SPHERE'}`);
+}
+
+// ── ISOMETRIC DRAW ───────────────────────────────────────────────────────────────
+function isoProject(x3, y3, z3) {
+    const zoom  = (parseFloat(document.getElementById('sphereZoom')?.value) || 100) / 100;
+    const scale = 0.9 * zoom;
+    const ix = (x3 - z3) * Math.cos(Math.PI / 6) * scale;
+    const iy = (x3 + z3) * Math.sin(Math.PI / 6) * scale - y3 * scale * 0.85;
+    return { sx: CX + ix, sy: CY + 60 + iy };
+}
+
+function drawIso() {
+    ictx.clearRect(0, 0, 700, 700);
+    const baseHue    = (moodHue + (EMOTIONS[currentEmotion]?.hueShift || 0) + 360) % 360;
+    const synapseHue = (baseHue + SYNAPSE_HUE_OFFSET) % 360;
+    ictx.fillStyle = '#03040a';
+    ictx.fillRect(0, 0, 700, 700);
+
+    // Grid floor
+    ictx.save();
+    ictx.strokeStyle = `hsla(${synapseHue},40%,25%,0.35)`;
+    ictx.lineWidth = 0.5;
+    const gridStep = 60, gridRange = 4;
+    for (let gx = -gridRange; gx <= gridRange; gx++) {
+        const a = isoProject(gx * gridStep, 0, -gridRange * gridStep);
+        const b = isoProject(gx * gridStep, 0,  gridRange * gridStep);
+        ictx.beginPath(); ictx.moveTo(a.sx, a.sy); ictx.lineTo(b.sx, b.sy); ictx.stroke();
+    }
+    for (let gz = -gridRange; gz <= gridRange; gz++) {
+        const a = isoProject(-gridRange * gridStep, 0, gz * gridStep);
+        const b = isoProject( gridRange * gridStep, 0, gz * gridStep);
+        ictx.beginPath(); ictx.moveTo(a.sx, a.sy); ictx.lineTo(b.sx, b.sy); ictx.stroke();
+    }
+    ictx.restore();
+
+    // Synapse connections on floor
+    ictx.save();
+    for (const e of edges) {
+        const na = neurons[e.a], nb = neurons[e.b];
+        const w  = e.w.weight;
+        const act = (na.potential + nb.potential) * 0.5;
+        const alpha = Math.min(w * act * 0.5 + w * 0.15, 0.55);
+        if (alpha < 0.02) continue;
+        const pa = isoProject(na.x - CX, 0, na.y - CY);
+        const pb = isoProject(nb.x - CX, 0, nb.y - CY);
+        const glow = Math.max(0, 1 - (frame - Math.max(na.lastFired, nb.lastFired)) / 60);
+        ictx.lineWidth   = 0.5 + w * 1.2 + glow * 1.5;
+        ictx.strokeStyle = `hsla(${synapseHue},70%,60%,${(alpha + glow * 0.3).toFixed(3)})`;
+        ictx.beginPath(); ictx.moveTo(pa.sx, pa.sy); ictx.lineTo(pb.sx, pb.sy); ictx.stroke();
+    }
+    ictx.restore();
+
+    // Neuron columns (sorted back-to-front, cached every 4 frames)
+    if (!drawIso._sortCache || frame % 4 === 0) {
+        drawIso._sortCache = neurons.slice().sort((a, b) => {
+            const pa = isoProject(a.x - CX, 0, a.y - CY);
+            const pb = isoProject(b.x - CX, 0, b.y - CY);
+            return pa.sy - pb.sy;
+        });
+    }
+    const sorted = drawIso._sortCache;
+    for (const n of sorted) {
+        const glow   = Math.max(0, 1 - (frame - n.lastFired) / 60);
+        const breath = 0.5 + Math.sin(frame * 0.018 + n.x * 0.015 + n.y * 0.01) * 0.4;
+        const act    = Math.max(n.potential, breath * 0.12);
+        const colH   = Math.max(2, act * 55 + glow * 30);
+        const nHue   = n.potential > 0.05 ? (baseHue + (n.clusterHue || 0)) % 360 : (baseHue + act * 80) % 360;
+        const base   = isoProject(n.x - CX, 0,    n.y - CY);
+        const top    = isoProject(n.x - CX, colH, n.y - CY);
+        const alpha  = Math.min(0.15 + act * 0.7 + glow * 0.4, 0.95);
+        // Depth fog: neurons further from centre (larger iso y) fade out
+        const isoDepth = Math.max(0, 1 - Math.abs(base.sy - (CY + 60)) / 280);
+        const fogAlpha = alpha * (0.25 + 0.75 * isoDepth);
+        // Stem
+        ictx.strokeStyle = `hsla(${nHue},85%,65%,${(fogAlpha * 0.6).toFixed(2)})`;
+        ictx.lineWidth   = 1.2 + act * 2.5;
+        ictx.beginPath(); ictx.moveTo(base.sx, base.sy); ictx.lineTo(top.sx, top.sy); ictx.stroke();
+        // Top orb
+        const orbR = 1.5 + act * 5 + glow * 3;
+        const g = ictx.createRadialGradient(top.sx, top.sy, 0, top.sx, top.sy, orbR * 2.5);
+        g.addColorStop(0,   `hsla(${nHue},100%,90%,${fogAlpha})`);
+        g.addColorStop(0.4, `hsla(${nHue},90%,65%,${fogAlpha * 0.5})`);
+        g.addColorStop(1,   `hsla(${nHue},80%,40%,0)`);
+        ictx.beginPath(); ictx.arc(top.sx, top.sy, orbR * 2.5, 0, Math.PI * 2);
+        ictx.fillStyle = g; ictx.fill();
+    }
+}
+
+// ── RIPPLE SYSTEM ────────────────────────────────────────────────────────
+const ripples = [];
+function spawnRipple(x, y, color) {
+    ripples.push({ x, y, r: 0, alpha: 0.65, color: color || `hsl(${moodHue},80%,60%)` });
+}
+function updateRipples() {
+    rctx.clearRect(0, 0, 700, 700);
+    for (let i = ripples.length - 1; i >= 0; i--) {
+        const rp = ripples[i];
+        rp.r    += 3.8;
+        rp.alpha -= 0.016;
+        if (rp.alpha <= 0) { ripples.splice(i, 1); continue; }
+        rctx.beginPath();
+        rctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+        rctx.strokeStyle = rp.color.replace('hsl(', 'hsla(').replace(')', `,${rp.alpha.toFixed(2)})`);
+        rctx.lineWidth = 1.5;
+        rctx.stroke();
+    }
+}
+
+// ── EMOTION STATE MACHINE ────────────────────────────────────────────────
+const EMOTIONS = {
+    IDLE:     { color:'#4a6090', desc:'Entity at rest. Awaiting sensory input.',         hueShift:0,   vowel:'u', contour:'flat'    },
+    CURIOUS:  { color:'#3a8fff', desc:'Detecting patterns. Memory circuits active.',     hueShift:25,  vowel:'e', contour:'rising'  },
+    ALERT:    { color:'#ff5a3a', desc:'High sensory input. Rapid neural firing.',        hueShift:-35, vowel:'i', contour:'staccato'},
+    EXCITED:  { color:'#cc3aff', desc:'Pattern cascade. Mimicry engaged.',               hueShift:65,  vowel:'o', contour:'fast'    },
+    DREAMING: { color:'#3affcc', desc:'Low excitation. Replaying stored patterns.',      hueShift:140, vowel:'u', contour:'reversed'}
+};
+function setEmotion(e) {
+    if (e === currentEmotion) return;
+    currentEmotion = e;
+    const em = EMOTIONS[e];
+    document.getElementById('emotionBlock').textContent  = e;
+    document.getElementById('emotionBlock').style.color  = em.color;
+    document.getElementById('emotionOverlay').textContent = e;
+    document.getElementById('emotionOverlay').style.color = em.color;
+    document.getElementById('emotionOverlay').style.borderColor = em.color + '44';
+    document.getElementById('emotionDesc').textContent   = em.desc;
+    addLog(`🌊 emotion → ${e}`, false);
+}
+// Emotion hold timer — prevents snapping back to IDLE immediately after
+// audio drops. The entity stays in its current non-IDLE state for at
+// least EMOTION_HOLD_FRAMES frames after the trigger condition clears.
+const EMOTION_HOLD_FRAMES = 180;  // ~3 s at 60 fps
+let emotionHoldUntil = 0;
+
+function computeEmotion() {
+    let e = 'IDLE';
+    if      (globalExcitation > 0.50 || audioLevel > 0.12)                                    e = 'ALERT';
+    else if (globalExcitation > 0.32 && tonalMemory.patterns.length > 0)                      e = 'EXCITED';
+    else if (audioLevel > 0.018 || motionLevel > 0.018 || globalExcitation > 0.12)            e = 'CURIOUS';
+    else if (globalExcitation < 0.15 && tonalMemory.patterns.length > 1 && Math.random() < 0.004) e = 'DREAMING';
+
+    // If we computed something non-IDLE, refresh the hold timer
+    if (e !== 'IDLE') emotionHoldUntil = frame + EMOTION_HOLD_FRAMES;
+
+    // If hold timer is still active, don't allow a drop back to IDLE
+    if (e === 'IDLE' && frame < emotionHoldUntil) e = currentEmotion === 'IDLE' ? 'CURIOUS' : currentEmotion;
+
+    setEmotion(e);
+}
+
+// ── FORMANT VOICE ────────────────────────────────────────────────────────
+// Signal chain: sawtooth → F1 bandpass → F2 bandpass → makeup gain → envelope gain → master
+//
+// Why the makeup gain? Each narrow bandpass filter attenuates most of the
+// signal. Q values are deliberately lower (4–6) so more harmonic energy
+// passes through while still shaping the vowel colour. The makeup gain
+// node then compensates for the remaining filter loss with a fixed ×8
+// boost before the envelope gain, giving full audible volume.
+const FORMANTS = {
+    a: { f1:730,  f2:1090, q1:5, q2:4 },
+    e: { f1:530,  f2:1840, q1:5, q2:4 },
+    i: { f1:310,  f2:2790, q1:4, q2:5 },
+    o: { f1:570,  f2:840,  q1:5, q2:4 },
+    u: { f1:440,  f2:1020, q1:4, q2:4 }
+};
+
+class FormantVoice {
+    constructor(actx, master) { this.ctx = actx; this.master = master; }
+
+    // osc → [F1 → F2 → makeup×8] → envelope gain → master
+    _route(osc, envGain, vowel) {
+        const fd = FORMANTS[vowel];
+        if (fd) {
+            const f1 = this.ctx.createBiquadFilter();
+            f1.type = 'bandpass'; f1.frequency.value = fd.f1; f1.Q.value = fd.q1;
+            const f2 = this.ctx.createBiquadFilter();
+            f2.type = 'bandpass'; f2.frequency.value = fd.f2; f2.Q.value = fd.q2;
+            const makeup = this.ctx.createGain();
+            makeup.gain.value = 8;          // compensate for filter attenuation
+            osc.connect(f1); f1.connect(f2); f2.connect(makeup); makeup.connect(envGain);
+        } else {
+            osc.connect(envGain);
+        }
+        envGain.connect(this.master);
+    }
+
+    speakVowel(vowel, pitch = 150, duration = 0.7, vol = 0.9) {
+        if (!this.ctx) return;
+        const t    = this.ctx.currentTime;
+        const osc  = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = pitch;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.linearRampToValueAtTime(vol, t + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+        this._route(osc, gain, vowel);
+        osc.start(t); osc.stop(t + duration + 0.02);
+    }
+
+    grunt(baseFreq = 95, vowel = 'u', vol = 0.75) {
+        if (!this.ctx) return;
+        const t    = this.ctx.currentTime;
+        const osc  = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = baseFreq;
+        const lfo  = this.ctx.createOscillator();
+        const lfoG = this.ctx.createGain();
+        lfo.type = 'sine'; lfo.frequency.value = 11;
+        lfoG.gain.value = 13;
+        lfo.connect(lfoG); lfoG.connect(osc.frequency);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.linearRampToValueAtTime(vol, t + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+        this._route(osc, gain, vowel);
+        lfo.start(t); osc.start(t);
+        lfo.stop(t + 0.57); osc.stop(t + 0.57);
+    }
+
+    playMelody(freqs, durations, vowel = 'a', vol = 0.85, pitchGlide = false) {
+        if (!this.ctx || !freqs.length) return;
+        let t = this.ctx.currentTime + 0.01;
+        freqs.forEach((freq, i) => {
+            const dur  = durations[i] || 0.12;
+            const osc  = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            if (pitchGlide) {
+                osc.frequency.setValueAtTime(freq * 1.07, t);
+                osc.frequency.exponentialRampToValueAtTime(freq, t + dur * 0.35);
+            } else {
+                osc.frequency.value = freq;
+            }
+            gain.gain.setValueAtTime(0.0001, t);
+            gain.gain.linearRampToValueAtTime(vol, t + 0.018);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+            this._route(osc, gain, vowel);
+            osc.start(t); osc.stop(t + dur + 0.02);
+            t += dur * 0.92 + 0.018;
+        });
+    }
+
+    sweep(startFreq = 200, endFreq = 2200, duration = 0.7, vowel = 'a') {
+        if (!this.ctx) return;
+        const t    = this.ctx.currentTime;
+        const osc  = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(startFreq, t);
+        osc.frequency.exponentialRampToValueAtTime(endFreq, t + duration);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.linearRampToValueAtTime(0.85, t + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+        this._route(osc, gain, vowel);
+        osc.start(t); osc.stop(t + duration + 0.02);
+    }
+}
+
+let voice = null;
+
+// ── DELAYED MIMICRY SYSTEM ───────────────────────────────────────────────
+let scheduledResponseTimer = null;
+let pendingPattern = null;
+
+function cancelDelayedResponse() {
+    if (scheduledResponseTimer) { clearTimeout(scheduledResponseTimer); scheduledResponseTimer = null; }
+    pendingPattern = null;
+}
+
+function scheduleDelayedMimicry(pattern) {
+    cancelDelayedResponse();
+    pendingPattern = pattern;
+    const delaySec = parseFloat(document.getElementById('delayRange').value);
+    addLog(`⏳ will respond in ${delaySec.toFixed(1)}s — pattern #${pattern.id}`, false);
+
+    scheduledResponseTimer = setTimeout(() => {
+        if (!pendingPattern || !voice) { scheduledResponseTimer = null; return; }
+        applyExpressiveTransform(pendingPattern.freqs, `DELAYED #${pendingPattern.id}`);
+        // plasma burst on response
+        for (let i = 0; i < 40; i++) {
+            const ang = Math.random() * Math.PI * 2;
+            const rad = 40 + Math.random() * 110;
+            sprites.push({
+                x: CX + Math.cos(ang) * rad, y: CY + Math.sin(ang) * rad,
+                vx: (Math.random() - 0.5) * 1.4, vy: (Math.random() - 0.5) * 1.4,
+                size: 3 + Math.random() * 5, baseAlpha: 0.75,
+                hueShift: Math.random() * 360, pulseSpeed: 0.055
+            });
+        }
+        moodHue = (moodHue + 20) % 360;
+        pendingPattern = null;
+        scheduledResponseTimer = null;
+    }, delaySec * 1000);
+}
+
+// ── EXPRESSIVE TONAL RESPONSE ENGINE ────────────────────────────────────
+// Applies emotion-driven contour + formant vowel selection to any
+// frequency sequence before scheduling it on the AudioContext timeline.
+function applyExpressiveTransform(freqSequence, label) {
+    if (!voice || !voice.ctx) return;
+    const em   = EMOTIONS[currentEmotion];
+    const varScale = (document.getElementById('pitchVar')?.value || 30) / 100;
+    let   freqs = freqSequence.slice();
+    let   vowel = em.vowel;
+    let   vol   = 0.85;
+    let   responseLabel = '';
+    let   pitchGlide = false;
+
+    switch (currentEmotion) {
+        case 'CURIOUS':
+            freqs = freqs.map((f, i) => f * (1.0 + (i / freqs.length) * 0.42));
+            freqs = freqs.map(f => f * (1.04 + (Math.random() - 0.5) * varScale * 0.1));
+            vol = 0.88; pitchGlide = true;
+            responseLabel = 'QUESTION ↗';
+            break;
+        case 'ALERT':
+            freqs = freqs.slice().sort(() => Math.random() - 0.5).slice(0, Math.min(freqs.length, 6));
+            freqs = freqs.map(f => f * (1.1 + (Math.random() - 0.5) * varScale * 0.12));
+            vol = 0.92;
+            responseLabel = 'ALARM ⚠';
+            break;
+        case 'EXCITED':
+            freqs = freqs.map(f => f * (1.18 + (Math.random() - 0.5) * varScale * 0.1));
+            vol = 0.90; pitchGlide = true;
+            responseLabel = 'EXCITED ★';
+            break;
+        case 'DREAMING':
+            freqs = freqs.slice().reverse().map(f => f * (0.76 + (Math.random() - 0.5) * varScale * 0.08));
+            vol = 0.72;
+            responseLabel = 'DREAM ∼';
+            break;
+        default:
+            freqs = freqs.map(f => f * (0.97 + (Math.random() - 0.5) * varScale * 0.1));
+            vol = 0.80;
+            responseLabel = 'ECHO ↺';
+    }
+
+    const tempoMap  = { IDLE:0.14, CURIOUS:0.12, ALERT:0.055, EXCITED:0.07, DREAMING:0.28 };
+    const baseDur   = tempoMap[currentEmotion] || 0.13;
+    const durations = freqs.map(() => baseDur * (0.7 + Math.random() * 0.5));
+    freqs = freqs.map(f => Math.max(80, Math.min(3400, f)));
+
+    // ── Formant vowel injection ───────────────────────────────────────────────
+    // Probability varies by emotion. When triggered, a held vowel tone
+    // is layered over the melody at a pitch derived from the pattern's
+    // median frequency, mapped into a comfortable vocal range.
+    const formantChance = { CURIOUS:0.55, EXCITED:0.60, DREAMING:0.45, ALERT:0.30, IDLE:0.25 };
+    const doFormant = Math.random() < (formantChance[currentEmotion] || 0.3);
+    if (doFormant) {
+        const sorted     = freqs.slice().sort((a, b) => a - b);
+        const medFreq    = sorted[Math.floor(sorted.length / 2)];
+        const octaves    = Math.round(Math.log2(medFreq / 180));
+        const vocalPitch = Math.min(320, Math.max(80, medFreq / Math.pow(2, octaves)));
+        const vocalDur   = baseDur * freqs.length * 0.55;
+        const vocalDelay = baseDur * Math.floor(freqs.length * 0.2);
+        setTimeout(() => {
+            if (voice && voice.ctx) voice.speakVowel(vowel, vocalPitch, vocalDur, vol * 0.55);
+        }, vocalDelay * 1000);
+        responseLabel += ` +/${vowel}/`;
+    }
+
+    voice.playMelody(freqs, durations, vowel, vol, pitchGlide);
+
+    const fullLabel = label ? `${label} — ${responseLabel}` : responseLabel;
+    document.getElementById('lastResponse').textContent = fullLabel;
+    addLog(`🔊 ${fullLabel} (${freqs.length} tones, ${currentEmotion})`, true);
+}
+
+function expressiveResponse() {
+    if (!voice) return;
+    if (tonalMemory.patterns.length > 0) {
+        // Weighted selection by strength
+        const total = tonalMemory.patterns.reduce((s, p) => s + p.strength, 0);
+        let r = Math.random() * total, chosen = tonalMemory.patterns[0];
+        for (const p of tonalMemory.patterns) { r -= p.strength; if (r <= 0) { chosen = p; break; } }
+        applyExpressiveTransform(chosen.freqs, `PAT #${chosen.id}`);
+    } else {
+        // Spontaneous phrase — random walk biased by emotion
+        const root  = 180 + Math.random() * 280;
+        const count = 5 + Math.floor(Math.random() * 6);
+        const bias  = { CURIOUS:0.55, DREAMING:-0.25, ALERT:0.0, EXCITED:0.3, IDLE:0.05 }[currentEmotion] || 0;
+        const spontaneous = [];
+        let cur = root;
+        for (let i = 0; i < count; i++) {
+            const semi = (Math.random() - 0.5 + bias) * 5;
+            cur = cur * Math.pow(2, semi / 12);
+            spontaneous.push(cur);
+        }
+        applyExpressiveTransform(spontaneous, 'SPONTANEOUS');
+    }
+}
+
+// ── FRACTAL LIGHTNING ────────────────────────────────────────────────────
+const lightningBolts = [];
+
+function spawnLightningBolt(seedIdx, hue) {
+    const visited = new Set([seedIdx]);
+    const segments = [];
+    const queue = [{ idx: seedIdx, depth: 0 }];
+    const maxDepth = 8 + Math.floor(Math.random() * 6);
+
+    while (queue.length) {
+        const { idx, depth } = queue.shift();
+        if (depth >= maxDepth) continue;
+        const n = neurons[idx];
+        const links = neurons[idx].links.slice().sort(() => Math.random() - 0.5);
+        let branched = 0;
+        for (const lnk of links) {
+            if (visited.has(lnk.target) || branched >= 3) continue;
+            if (Math.random() > Math.pow(0.80, depth)) continue;
+            visited.add(lnk.target);
+            const t = neurons[lnk.target];
+            segments.push({ x1: n.x, y1: n.y, x2: t.x, y2: t.y, depth, alpha: 1.0 });
+            queue.push({ idx: lnk.target, depth: depth + 1 });
+            branched++;
+        }
+    }
+    if (segments.length) lightningBolts.push({ segments, hue: hue || 160, life: 1.0 });
+}
+
+function updateLightning() {
+    for (let i = lightningBolts.length - 1; i >= 0; i--) {
+        const bolt = lightningBolts[i];
+        bolt.life -= 0.026;
+        if (bolt.life <= 0) { lightningBolts.splice(i, 1); continue; }
+        for (const seg of bolt.segments) seg.alpha = bolt.life;
+    }
+}
+
+function drawLightning() {
+    if (!lightningBolts.length) return;
+    ctx.save();
+    for (const bolt of lightningBolts) {
+        for (const seg of bolt.segments) {
+            const df = 1 - seg.depth * 0.065;
+            const a  = seg.alpha * df;
+            if (a < 0.01) continue;
+            ctx.lineWidth   = 2.8 - seg.depth * 0.18;
+            ctx.strokeStyle = `hsla(${bolt.hue},90%,72%,${(a * 0.22).toFixed(3)})`;
+            ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
+            ctx.lineWidth   = 0.75;
+            ctx.strokeStyle = `hsla(${bolt.hue + 20},100%,96%,${(a * 0.88).toFixed(3)})`;
+            ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
+        }
+    }
+    ctx.restore();
+}
+
+function triggerDreamLightning() {
+    const dreamHue = 155 + Math.random() * 65;
+    for (let w = 0; w < 5; w++) {
+        setTimeout(() => {
+            const count = 2 + Math.floor(Math.random() * 3);
+            for (let b = 0; b < count; b++) {
+                const seed = Math.floor(Math.random() * NCOUNT);
+                spawnLightningBolt(seed, (dreamHue + b * 20) % 360);
+                neurons[seed].potential = Math.min(neurons[seed].potential + 0.65, 1.0);
+                // excite nearby sprites
+                for (const s of sprites) {
+                    if (Math.hypot(s.x - neurons[seed].x, s.y - neurons[seed].y) < 80) {
+                        s.vx += (Math.random() - 0.5) * 1.2;
+                        s.vy += (Math.random() - 0.5) * 1.2;
+                    }
+                }
+            }
+        }, w * 210);
+    }
+}
+
+// ── TONAL MEMORY ─────────────────────────────────────────────────────────
+class TonalMemory {
+    constructor() { this.patterns = []; this.shortBuffer = []; this.bufferTimeout = null; }
+
+    freqToMidi(f) { return f < 20 ? 0 : 12 * Math.log2(f / 440) + 69; }
+
+    extractDelta(freqs) {
+        if (freqs.length < 2) return [];
+        const midi = freqs.map(f => this.freqToMidi(f));
+        const d = [];
+        for (let i = 1; i < midi.length; i++) d.push(parseFloat((midi[i] - midi[i-1]).toFixed(2)));
+        return d;
+    }
+
+    compare(d1, d2) {
+        if (!d1.length || !d2.length) return 999;
+        const len = Math.min(d1.length, d2.length);
+        if (len < 2) return 999;
+        let sum = 0;
+        for (let i = 0; i < len; i++) sum += Math.pow(d1[i] - d2[i], 2);
+        return Math.sqrt(sum) / len;
+    }
+
+    learn(freqs) {
+        if (freqs.length < 3) return null;
+        const sig = this.extractDelta(freqs);
+        if (sig.length < 2) return null;
+        let best = null, bestScore = 999;
+        for (const p of this.patterns) {
+            const s = this.compare(sig, p.sig);
+            if (s < bestScore) { bestScore = s; best = p; }
+        }
+        if (best && bestScore < 1.45) {
+            best.strength = Math.min(best.strength + 0.18, 2.0);
+            best.lastMatched = Date.now();
+            best.freqs = freqs.slice();
+            best.timesMatched = (best.timesMatched || 1) + 1;
+            // Promote to favourite if heard enough times at sufficient strength
+            if (best.timesMatched >= 8 && best.strength >= 1.4 && !best.favourite) {
+                best.favourite = true;
+                addLog(`⭐ SIGNATURE: pattern #${best.id} is now a favourite (heard ${best.timesMatched}×)`, true);
+            }
+            spawnRipple(CX + (Math.random() - 0.5) * 180, CY + (Math.random() - 0.5) * 180);
+            addLog(`🧠 pattern #${best.id} reinforced (str ${best.strength.toFixed(2)}, heard ${best.timesMatched}×)`, false);
+            this.render(); this.renderFavourites(); this.save();
+            return best;
+        } else {
+            const np = { id: this.patterns.length + 1, sig, freqs: freqs.slice(), strength: 0.72, lastMatched: Date.now(), timesMatched: 1, favourite: false };
+            this.patterns.push(np);
+            if (this.patterns.length > 28) this.patterns.shift();
+            spawnRipple(CX, CY, `hsl(${(moodHue + 60) % 360},90%,65%)`);
+            addLog(`✨ NEW pattern #${np.id} — ${freqs.length} notes`, true);
+            this.render(); this.renderFavourites(); this.save();
+            return np;
+        }
+    }
+
+    finalizeBuffer() {
+        if (this.shortBuffer.length >= 3) {
+            const learned = this.learn(this.shortBuffer.map(b => b.freq));
+            if (learned) scheduleDelayedMimicry(learned);
+        }
+        if (this.shortBuffer.length > 8) this.shortBuffer = this.shortBuffer.slice(-5);
+    }
+
+    addNote(freq, now) {
+        if (!freq || freq < 80) return;
+        if (this.shortBuffer.length > 0) {
+            const last = this.shortBuffer[this.shortBuffer.length - 1];
+            if (Math.abs(last.freq - freq) < 12 && (now - last.timestamp) < 180) return;
+        }
+        this.shortBuffer.push({ freq, timestamp: now });
+        if (this.bufferTimeout) clearTimeout(this.bufferTimeout);
+        this.bufferTimeout = setTimeout(() => { this.finalizeBuffer(); this.bufferTimeout = null; }, 700);
+        if (this.shortBuffer.length > 7) { this.finalizeBuffer(); this.shortBuffer = this.shortBuffer.slice(-3); }
+    }
+
+    getFavourites() {
+        return this.patterns.filter(p => p.favourite);
+    }
+
+    // Play a signature chirp: a favourite pattern replayed through the full
+    // FormantVoice chain with emotion-shaped variation. Each call introduces
+    // slight pitch drift and rhythm variation so it never sounds identical.
+    signatureChirp(pattern) {
+        if (!voice || !pattern || !pattern.freqs) return;
+        const em     = EMOTIONS[currentEmotion];
+        const vowel  = em.vowel;
+        const varScale = (parseFloat(document.getElementById('pitchVar')?.value) || 30) / 100;
+
+        // Emotion-shaped contour (same as applyExpressiveTransform but lighter)
+        let freqs = pattern.freqs.slice();
+        let tempoMult = 1.0, pitchShift = 1.0, vol = 0.82;
+        let label = '';
+
+        switch (currentEmotion) {
+            case 'CURIOUS':
+                freqs = freqs.map((f, i) => f * (1.0 + (i / freqs.length) * 0.28));
+                pitchShift = 1.04; tempoMult = 0.9; label = '↗';
+                break;
+            case 'ALERT':
+                freqs = freqs.slice(0, Math.max(3, Math.floor(freqs.length * 0.7)));
+                pitchShift = 1.08; tempoMult = 0.5; label = '⚡';
+                break;
+            case 'EXCITED':
+                pitchShift = 1.15; tempoMult = 0.55; vol = 0.88; label = '★';
+                break;
+            case 'DREAMING':
+                freqs = freqs.slice().reverse();
+                pitchShift = 0.82; tempoMult = 2.2; vol = 0.65; label = '∿';
+                break;
+            default:
+                pitchShift = 0.98; tempoMult = 1.05; label = '↺';
+        }
+
+        // Per-call micro-variation: ±4% pitch drift, ±10% rhythm jitter
+        const drift = 1 + (Math.random() - 0.5) * 0.08 * varScale;
+        freqs = freqs.map(f => Math.max(80, Math.min(3400, f * pitchShift * drift)));
+        const baseDur = 0.13 * tempoMult;
+        const durs    = freqs.map(() => baseDur * (0.8 + Math.random() * 0.4));
+
+        voice.playMelody(freqs, durs, vowel, vol, currentEmotion === 'CURIOUS');
+
+        const fullLabel = `⭐ SIG #${pattern.id} ${label} /${vowel}/`;
+        document.getElementById('lastResponse').textContent = fullLabel;
+        addLog(`${fullLabel} (${freqs.length} tones, heard ${pattern.timesMatched}×)`, true);
+        moodHue = (moodHue + 18) % 360;
+    }
+
+    proactive() {
+        if (!voice || this.patterns.length < 2) return;
+        const p1 = this.patterns[Math.floor(Math.random() * this.patterns.length)];
+        const p2 = this.patterns[Math.floor(Math.random() * this.patterns.length)];
+        const combined = p1.freqs.slice(0, Math.ceil(p1.freqs.length * 0.6)).concat(p2.freqs.slice(-3));
+        applyExpressiveTransform(combined.length >= 3 ? combined : p1.freqs, 'IMPROV');
+        addLog('🌀 proactive improvisation — recombinant melody', true);
+    }
+
+    applyForgetting() {
+        const rate = parseFloat(document.getElementById('forgetRate')?.value || 12) / 1000;
+        const before = this.patterns.length;
+        this.patterns = this.patterns.filter(p => { p.strength -= rate * 0.3; return p.strength > 0.06; });
+        if (this.patterns.length !== before) this.render();
+    }
+
+    render() {
+        const container = document.getElementById('patternList');
+        if (!container) return;
+        document.getElementById('memoryCount').textContent = this.patterns.length;
+        document.getElementById('persistBadge').textContent = `MEM: ${this.patterns.length}`;
+        if (!this.patterns.length) {
+            container.innerHTML = '<div style="font-family:var(--mono);font-size:0.63rem;color:#2a3550;">— no patterns yet —</div>';
+            return;
+        }
+        container.innerHTML = '';
+        this.patterns.slice().reverse().forEach(p => {
+            const row = document.createElement('div');
+            row.className = 'pattern-row';
+            const preview = p.freqs.slice(0, 4).map(f => Math.round(f)).join(' › ');
+            const pct = Math.min((p.strength / 2) * 100, 100).toFixed(0);
+            const star = p.favourite ? '<span style="color:#ffcc44;margin-right:3px;">⭐</span>' : '';
+            const heard = p.timesMatched ? `<span style="color:#2a3550;font-size:0.55rem;margin-left:3px;">${p.timesMatched}×</span>` : '';
+            row.innerHTML = `${star}<span style="color:#3a5070;min-width:26px;">#${p.id}</span><span style="flex:1">${preview}…</span><div class="str-bar"><div class="str-fill" style="width:${pct}%"></div></div><span style="color:#3a5070;">${p.freqs.length}n</span>${heard}`;
+            row.addEventListener('click', () => {
+                cancelDelayedResponse();
+                scheduleDelayedMimicry(p);
+                document.getElementById('memStatus').textContent = `Queued pattern #${p.id}…`;
+            });
+            container.appendChild(row);
+        });
+    }
+
+    renderFavourites() {
+        const container = document.getElementById('favouritesList');
+        if (!container) return;
+        const favs = this.getFavourites();
+        if (!favs.length) {
+            container.innerHTML = '<div style="color:#2a3550;">— no favourites yet —</div>';
+            return;
+        }
+        container.innerHTML = '';
+        favs.forEach(p => {
+            const row = document.createElement('div');
+            row.className = 'pattern-row';
+            const preview = p.freqs.slice(0, 5).map(f => Math.round(f)).join(' › ');
+            row.innerHTML = `<span style="color:#ffcc44;">⭐</span><span style="color:#3a5070;min-width:26px;">#${p.id}</span><span style="flex:1">${preview}…</span><span style="color:#3a5070;">${p.timesMatched}×</span>`;
+            row.addEventListener('click', () => {
+                this.signatureChirp(p);
+                document.getElementById('memStatus').textContent = `Playing signature #${p.id}…`;
+            });
+            container.appendChild(row);
+        });
+    }
+
+    save()  { try { localStorage.setItem('plasma_v3_mem', JSON.stringify(this.patterns)); } catch(e) {} }
+    load()  {
+        try {
+            const raw = localStorage.getItem('plasma_v3_mem');
+            if (raw) { this.patterns = JSON.parse(raw); this.render(); this.renderFavourites(); addLog(`📂 loaded ${this.patterns.length} patterns`, false); }
+        } catch(e) {}
+    }
+    clear() {
+        this.patterns = []; this.shortBuffer = [];
+        localStorage.removeItem('plasma_v3_mem');
+        this.render(); this.renderFavourites(); addLog('🗑️ memory cleared', false);
+        document.getElementById('memStatus').textContent = 'Memory cleared.';
+    }
+}
+const tonalMemory = new TonalMemory();
+
+// ── PITCH DETECTION (parabolic interpolation) ────────────────────────────
+let pitchInterval = null;
+function startPitch(analyser) {
+    if (pitchInterval) clearInterval(pitchInterval);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    pitchInterval = setInterval(() => {
+        if (!analyser) return;
+        analyser.getByteFrequencyData(data);
+        let maxIdx = 0, maxVal = 0;
+        for (let i = 1; i < data.length - 1; i++) if (data[i] > maxVal) { maxVal = data[i]; maxIdx = i; }
+        if (maxVal < 15) return;
+        const y1 = data[maxIdx - 1] || 0, y2 = data[maxIdx], y3 = data[maxIdx + 1] || 0;
+        const denom = y1 - 2 * y2 + y3;
+        const refined = denom !== 0 ? maxIdx - 0.5 * (y3 - y1) / denom : maxIdx;
+        const nyquist = (audioCtx?.sampleRate || 48000) / 2;
+        const freq = (refined * nyquist) / analyser.frequencyBinCount;
+        if (freq > 80 && freq < 4800) tonalMemory.addNote(freq, Date.now());
+    }, 215);
+}
+
+// ── NEURON UPDATE ─────────────────────────────────────────────────────────
+const firingNeurons = new Set();
+const HEBBIAN_LTP  = 0.009;
+const HEBBIAN_LTD  = 0.0003;
+const WEIGHT_DECAY = 0.000008;
+const WEIGHT_MIN   = 0.015;
+const WEIGHT_MAX   = 1.0;
+
+function updateBrain() {
+    firingNeurons.clear();
+    globalExcitation = 0;
+    const chirpScale = (document.getElementById('chirpRate')?.value || 50) / 100;
+
+    for (const n of neurons) {
+        const sensory = audioLevel * 0.68 + motionLevel * 0.52;
+        // Idle spontaneous excitation — keeps network alive in silence
+        const idleNoise = 0.0008 + Math.sin(frame * 0.007 + n.x * 0.02) * 0.0006;
+        n.potential += sensory * 0.036 + idleNoise;
+        for (const lnk of n.links) n.potential += neurons[lnk.target].potential * lnk.weight * 0.0052;
+        n.potential -= 0.0016;  // slightly slower decay keeps field alive
+        n.potential = Math.min(1, Math.max(0, n.potential));
+        globalExcitation += n.potential;
+        if (n.potential > n.threshold) {
+            n.potential *= 0.72;
+            n.lastFired = frame;
+            firingNeurons.add(n);
+            moodHue += Math.random() * 4 - 2;
+            if (Math.random() < 0.006 * chirpScale && voice) {
+                // spontaneous single-tone chirp (not a full response)
+                const fd = FORMANTS['e'];
+                const t  = voice.ctx.currentTime;
+                const osc = voice.ctx.createOscillator(); const g = voice.ctx.createGain();
+                osc.type = 'sawtooth'; osc.frequency.value = 300 + Math.random() * 600;
+                g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.08, t + 0.01);
+                g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+                const f1 = voice.ctx.createBiquadFilter(); f1.type='bandpass'; f1.frequency.value=fd.f1; f1.Q.value=fd.q1;
+                const mkup = voice.ctx.createGain(); mkup.gain.value = 8;
+                osc.connect(f1); f1.connect(mkup); mkup.connect(g); g.connect(masterGainNode);
+                osc.start(t); osc.stop(t + 0.11);
+            }
+        }
+    }
+    globalExcitation /= NCOUNT;
+
+    // Hebbian weight update — run every 2 frames to halve cost at 900 neurons
+    if (frame % 2 === 0) for (const e of edges) {
+        const na = neurons[e.a], nb = neurons[e.b];
+        if (na.potential > 0.32 && nb.potential > 0.32)
+            e.w.weight = Math.min(e.w.weight + HEBBIAN_LTP * na.potential * nb.potential, WEIGHT_MAX);
+        else
+            e.w.weight = Math.max(e.w.weight - HEBBIAN_LTD, WEIGHT_MIN);
+        e.w.weight -= WEIGHT_DECAY;
+        if (e.w.weight < WEIGHT_MIN) e.w.weight = WEIGHT_MIN;
+    }
+
+    moodHue = (moodHue + audioLevel * 2.2 + motionLevel * 0.9 + tonalMemory.patterns.length / 10) % 360;
+    updateChromatic();
+    detectAssemblies();
+    computeEmotion();
+    tonalMemory.applyForgetting();
+
+    // Spontaneous vocalisation when idle/dreaming
+    if (document.getElementById('proactiveToggle')?.checked &&
+        audioLevel < 0.02 && motionLevel < 0.02 &&
+        tonalMemory.patterns.length > 0) {
+
+        const favs = tonalMemory.getFavourites();
+        const isDreaming = currentEmotion === 'DREAMING';
+        const isIdle     = currentEmotion === 'IDLE';
+
+        if (favs.length > 0 && (isDreaming || isIdle) && Math.random() < 0.0025) {
+            // Signature chirp: replay a favourite with emotional colouring
+            // Weighted by timesMatched so most-heard sounds come back most often
+            const totalHeard = favs.reduce((s, p) => s + (p.timesMatched || 1), 0);
+            let r = Math.random() * totalHeard;
+            let chosen = favs[0];
+            for (const p of favs) { r -= (p.timesMatched || 1); if (r <= 0) { chosen = p; break; } }
+            tonalMemory.signatureChirp(chosen);
+        } else if (Math.random() < 0.003) {
+            // Proactive improvisation: recombine fragments
+            tonalMemory.proactive();
+        }
+    }
+
+    frame++;
+}
+
+// ── DRAW BRAIN ────────────────────────────────────────────────────────────
+// ── CHROMATIC ACTIVITY CLUSTERING ───────────────────────────────────────────────
+// Each neuron accumulates a clusterHue offset by diffusing hue values
+// across its active synaptic neighbours. Co-firing groups converge on
+// shared hues, creating visible chromatic islands that shift and reform.
+const CLUSTER_INTERVAL = 12;
+let   clusterFrame     = 0;
+function updateChromatic() {
+    if (frame % CLUSTER_INTERVAL !== 0) return;
+    clusterFrame++;
+    for (let i = 0; i < NCOUNT; i++) {
+        const n = neurons[i];
+        if (!n.clusterHue) n.clusterHue = Math.random() * 360;
+        if (n.potential < 0.05) {
+            n.clusterHue = (n.clusterHue * 0.92) % 360;
+            continue;
+        }
+        let hSum = 0, hCount = 0;
+        for (const lnk of n.links) {
+            const nb = neurons[lnk.target];
+            if (nb.potential > 0.05) {
+                hSum += ((nb.clusterHue || 0) + lnk.weight * 30) % 360;
+                hCount++;
+            }
+        }
+        if (hCount > 0) {
+            const nHue = hSum / hCount;
+            n.clusterHue = (n.clusterHue * 0.7 + nHue * 0.3 + n.potential * 15) % 360;
+        } else {
+            n.clusterHue = (n.potential * 120 + clusterFrame * 0.8) % 360;
+        }
+    }
+}
+
+// ── CELL ASSEMBLY DETECTION ─────────────────────────────────────────────
+// Every ASSEMBLY_INTERVAL frames, run a connected-components pass over the
+// edge graph using only edges whose weight exceeds ASSEMBLY_THRESHOLD and
+// whose both endpoints are above a minimum potential. Each component with
+// at least ASSEMBLY_MIN_SIZE neurons is a detected cell assembly.
+// Assemblies are assigned a stable hue that persists across frames so
+// the chromatic grouping is readable rather than flickering.
+const ASSEMBLY_INTERVAL  = 20;    // frames between detection runs
+const ASSEMBLY_THRESHOLD = 0.35;  // minimum edge weight to count as connected
+const ASSEMBLY_MIN_SIZE  = 4;     // minimum neurons to qualify as an assembly
+const ASSEMBLY_MAX       = 12;    // cap on number of tracked assemblies
+
+// Assembly registry: { id, hue, size, meanWeight, centroidX, centroidY }
+let assemblies = [];
+let assemblyHuePool = [0,30,60,90,120,150,180,210,240,270,300,330];
+
+function detectAssemblies() {
+    if (frame % ASSEMBLY_INTERVAL !== 0) return;
+
+    // Build adjacency list of strong, co-active edges only
+    const adj = Array.from({ length: NCOUNT }, () => []);
+    for (const e of edges) {
+        const na = neurons[e.a], nb = neurons[e.b];
+        if (e.w.weight >= ASSEMBLY_THRESHOLD &&
+            na.potential > 0.08 && nb.potential > 0.08) {
+            adj[e.a].push(e.b);
+            adj[e.b].push(e.a);
+        }
+    }
+
+    // BFS connected components
+    const visited = new Uint8Array(NCOUNT);
+    const components = [];
+    for (let start = 0; start < NCOUNT; start++) {
+        if (visited[start] || adj[start].length === 0) continue;
+        const comp = [];
+        const queue = [start];
+        visited[start] = 1;
+        while (queue.length) {
+            const cur = queue.shift();
+            comp.push(cur);
+            for (const nb of adj[cur]) {
+                if (!visited[nb]) { visited[nb] = 1; queue.push(nb); }
+            }
+        }
+        if (comp.length >= ASSEMBLY_MIN_SIZE) components.push(comp);
+    }
+
+    // Sort by size descending, cap at ASSEMBLY_MAX
+    components.sort((a, b) => b.length - a.length);
+    const topComps = components.slice(0, ASSEMBLY_MAX);
+
+    // Assign stable hues — try to reuse hues from previous assemblies
+    // by matching on centroid proximity
+    const newAssemblies = topComps.map((comp, idx) => {
+        let cx = 0, cy = 0, totalW = 0;
+        for (const ni of comp) { cx += neurons[ni].x; cy += neurons[ni].y; }
+        cx /= comp.length; cy /= comp.length;
+        // Mean edge weight within component
+        let wSum = 0, wCount = 0;
+        for (const ni of comp) {
+            for (const lnk of neurons[ni].links) {
+                if (comp.includes(lnk.target)) { wSum += lnk.weight; wCount++; }
+            }
+        }
+        const meanW = wCount > 0 ? wSum / wCount : 0;
+        // Try to match an existing assembly by centroid distance
+        let bestOld = null, bestDist = 80;
+        for (const old of assemblies) {
+            const d = Math.hypot(cx - old.centroidX, cy - old.centroidY);
+            if (d < bestDist) { bestDist = d; bestOld = old; }
+        }
+        const hue = bestOld ? bestOld.hue : assemblyHuePool[idx % assemblyHuePool.length];
+        return { id: idx, hue, size: comp.length, meanWeight: meanW,
+                 centroidX: cx, centroidY: cy, members: comp };
+    });
+
+    // Update neuron assembly IDs
+    for (const n of neurons) n.assemblyId = -1;
+    for (const asm of newAssemblies) {
+        for (const ni of asm.members) neurons[ni].assemblyId = asm.id;
+    }
+    assemblies = newAssemblies;
+
+    // Update assembly stats in UI
+    const statsEl = document.getElementById('assemblyStats');
+    if (statsEl) {
+        if (assemblies.length === 0) {
+            statsEl.textContent = 'No active assemblies';
+        } else {
+            const top = assemblies[0];
+            statsEl.textContent = `${assemblies.length} assemblies — largest: ${top.size} neurons (str ${top.meanWeight.toFixed(2)})`;
+        }
+    }
+}
+
+const SYNAPSE_HUE_OFFSET = 162;
+
+function drawBrain() {
+    ctx.clearRect(0, 0, 700, 700);
+    const baseHue    = (moodHue + (EMOTIONS[currentEmotion]?.hueShift || 0) + 360) % 360;
+    const synapseHue = (baseHue + SYNAPSE_HUE_OFFSET) % 360;
+
+    // Project all neuron 3D base coords to 2D screen coords for this frame
+    for (const n of neurons) {
+        const p = project3D(n.bx, n.by, n.bz);
+        n.x = p.sx;
+        n.y = p.sy;
+        n._depth = p.depth;
+    }
+
+    // Background glow
+    const grad = ctx.createRadialGradient(CX, CY, 10, CX, CY, 320);
+    grad.addColorStop(0, `hsla(${baseHue},78%,50%,0.20)`);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(CX, CY, 320, 0, Math.PI * 2); ctx.fill();
+
+    // PASS 1: Ghost synapse threads with depth occlusion
+    // Neurons at the back of the sphere (depth < 0) are dimmed proportionally.
+    // The occlusion factor maps depth [-SPHERE_R … +SPHERE_R] → [0.08 … 1.0].
+    ctx.save();
+    ctx.lineWidth = 0.5;
+    for (const e of edges) {
+        const na = neurons[e.a], nb = neurons[e.b];
+        const w   = e.w.weight;
+        const act = (na.potential + nb.potential) * 0.5;
+        const baseAlpha = Math.min(w * act * 0.14, 0.09);
+        if (baseAlpha < 0.006) continue;
+        // Occlusion: mean depth of the two endpoints, normalised to [0,1]
+        const meanDepth = ((na._depth || 0) + (nb._depth || 0)) * 0.5;
+        const occ = 0.08 + 0.92 * Math.max(0, (meanDepth + SPHERE_R) / (2 * SPHERE_R));
+        const alpha = baseAlpha * occ;
+        if (alpha < 0.005) continue;
+        // Assembly-coloured edges: if both endpoints share an assembly, use its hue
+        const aId = na.assemblyId >= 0 && na.assemblyId === nb.assemblyId ? na.assemblyId : -1;
+        const eHue = aId >= 0 ? (assemblies[aId]?.hue ?? synapseHue) : synapseHue;
+        ctx.strokeStyle = `hsla(${eHue},65%,72%,${alpha.toFixed(3)})`;
+        ctx.beginPath(); ctx.moveTo(na.x, na.y); ctx.lineTo(nb.x, nb.y); ctx.stroke();
+    }
+    ctx.restore();
+
+    // PASS 2: Firing arc pulses — brief bright flash only when a neuron fires
+    ctx.save();
+    for (const n of firingNeurons) {
+        for (const lnk of n.links) {
+            const t     = neurons[lnk.target];
+            const alpha = Math.min(0.10 + lnk.weight * 0.22, 0.32);
+            const dx = t.x - n.x, dy = t.y - n.y;
+            const mx = (n.x + t.x) / 2 - dy * 0.14;
+            const my = (n.y + t.y) / 2 + dx * 0.14;
+            ctx.lineWidth   = 0.6 + lnk.weight * 0.8;
+            ctx.strokeStyle = `hsla(${synapseHue + 18},90%,85%,${alpha.toFixed(2)})`;
+            ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.quadraticCurveTo(mx, my, t.x, t.y); ctx.stroke();
+        }
+    }
+    ctx.restore();
+
+    // PASS 3: Neurons — fuzzy radial-gradient blobs with depth occlusion
+    // Back-hemisphere neurons are smaller and dimmer (occluded by the sphere).
+    // Assembly membership overrides the cluster hue with a stable assembly colour.
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const rScale = (parseFloat(document.getElementById('neuronRadius')?.value) || 100) / 100;
+    const aScale = (parseFloat(document.getElementById('neuronAlpha')?.value)  || 100) / 100;
+    for (const n of neurons) {
+        const glow   = Math.max(0, 1 - (frame - n.lastFired) / 80);
+        const breath = 0.5 + Math.sin(frame * 0.018 + n.bx * 0.015 + n.bz * 0.01) * 0.4;
+        const act    = Math.max(n.potential, breath * 0.12);
+        // Depth occlusion: back neurons shrink and dim
+        const depth  = n._depth || 0;
+        const occ    = 0.08 + 0.92 * Math.max(0, (depth + SPHERE_R) / (2 * SPHERE_R));
+        const radius = (3 + act * 14 + glow * 9) * rScale * (0.3 + 0.7 * occ);
+        const peak   = Math.min((0.05 + act * 0.26 + glow * 0.20) * aScale * occ, 0.95);
+        if (peak < 0.004) continue;
+        // Hue: assembly colour > cluster hue > base
+        let cHue;
+        if (n.assemblyId >= 0 && assemblies[n.assemblyId]) {
+            cHue = assemblies[n.assemblyId].hue;
+        } else if (n.potential > 0.05) {
+            cHue = (baseHue + (n.clusterHue || 0)) % 360;
+        } else {
+            cHue = (baseHue + act * 80) % 360;
+        }
+        const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, radius);
+        g.addColorStop(0,    `hsla(${cHue},100%,92%,${peak.toFixed(3)})`);
+        g.addColorStop(0.25, `hsla(${cHue},95%,75%,${(peak * 0.65).toFixed(3)})`);
+        g.addColorStop(0.6,  `hsla(${cHue},85%,55%,${(peak * 0.25).toFixed(3)})`);
+        g.addColorStop(1,    `hsla(${cHue},80%,40%,0)`);
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = g;
+        ctx.fill();
+    }
+    ctx.restore();
+
+    // PASS 4: Lightning
+    drawLightning();
+
+    // PASS 5: Spectrum ring
+    if (spectrumData && audioAnalyser) {
+        audioAnalyser.getByteFrequencyData(spectrumData);
+        for (let i = 0; i < 52; i++) {
+            const val   = spectrumData[i * 5] / 255;
+            const angle = (i / 52) * Math.PI * 2 - Math.PI / 2;
+            const r1 = 105, r2 = 105 + val * 52;
+            ctx.beginPath();
+            ctx.strokeStyle = `hsla(${(baseHue + i * 6) % 360},85%,68%,${0.25 + val * 0.5})`;
+            ctx.lineWidth = 1.5;
+            ctx.moveTo(CX + Math.cos(angle) * r1, CY + Math.sin(angle) * r1);
+            ctx.lineTo(CX + Math.cos(angle) * r2, CY + Math.sin(angle) * r2);
+            ctx.stroke();
+        }
+    }
+}
+
+// ── SPECTRUM BAR ──────────────────────────────────────────────────────────
+function drawSpectrumBar() {
+    const w = specEl.width = specEl.offsetWidth;
+    const h = specEl.height = specEl.offsetHeight;
+    sctx.fillStyle = '#020308'; sctx.fillRect(0, 0, w, h);
+    if (!spectrumData || !audioAnalyser) {
+        sctx.fillStyle = '#1a2030'; sctx.font = '9px Courier New';
+        sctx.fillText('NO SIGNAL', 8, h / 2 + 3); return;
+    }
+    audioAnalyser.getByteFrequencyData(spectrumData);
+    const barW = w / spectrumData.length * 2;
+    const step = Math.floor(spectrumData.length / (w / barW));
+    for (let i = 0; i < w / barW; i++) {
+        const val = spectrumData[i * step] / 255;
+        sctx.fillStyle = `hsla(${(moodHue + i * 1.8) % 360},82%,56%,0.88)`;
+        sctx.fillRect(i * barW, h - val * h, barW - 1, val * h);
+    }
+}
+
+// ── MAIN LOOP ─────────────────────────────────────────────────────────────
+function animate() {
+    updateRotation();
+    updateBrain();
+    if (isoViewActive) {
+        drawIso();
+    } else {
+        drawBrain();
+        updateSprites(); drawSprites();
+        updateRipples();
+        updateLightning();
+    }
+    drawSpectrumBar();
+    document.getElementById('audio').textContent  = audioLevel.toFixed(3);
+    document.getElementById('motion').textContent = motionLevel.toFixed(3);
+    document.getElementById('excite').textContent = globalExcitation.toFixed(3);
+    document.getElementById('hue').textContent    = Math.floor(moodHue);
+    requestAnimationFrame(animate);
+}
+animate();
+
+// ── SENSORS ───────────────────────────────────────────────────────────────
+async function setupSensors() {
+    if (sensorsActive) { addLog('Sensors already active.'); return; }
+    audioCtx       = new (window.AudioContext || window.webkitAudioContext)();
+    masterGainNode = audioCtx.createGain();
+    masterGainNode.gain.value = 1.8;   // raised default — slider can go to 2.4×
+    masterGainNode.connect(audioCtx.destination);
+    voice = new FormantVoice(audioCtx, masterGainNode);
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl:  false  // keep AGC off so we control gain ourselves
+        },
+        video: true
+    });
+    mediaStream = stream;
+    const source   = audioCtx.createMediaStreamSource(stream);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    source.connect(analyser);
+    audioAnalyser = analyser;
+    spectrumData  = new Uint8Array(analyser.frequencyBinCount);
+
+    (function updateAudio() {
+        if (!audioAnalyser) return;
+        const d = new Uint8Array(audioAnalyser.frequencyBinCount);
+        audioAnalyser.getByteFrequencyData(d);
+        let sum = 0; for (const v of d) sum += v;
+        audioLevel = sum / d.length / 255;
+        requestAnimationFrame(updateAudio);
+    })();
+
+    startPitch(analyser);
+
+    const video = document.createElement('video');
+    video.srcObject = stream; video.play();
+    const tCanvas = document.createElement('canvas');
+    const tctx    = tCanvas.getContext('2d');
+    (function updateMotion() {
+        tCanvas.width = 64; tCanvas.height = 48;
+        tctx.drawImage(video, 0, 0, 64, 48);
+        const fd = tctx.getImageData(0, 0, 64, 48).data;
+        if (previousFrame) {
+            let diff = 0;
+            for (let i = 0; i < fd.length; i += 4) diff += Math.abs(fd[i] - previousFrame[i]);
+            motionLevel = Math.min(diff / 110000, 1);
+        }
+        previousFrame = new Uint8ClampedArray(fd);
+        requestAnimationFrame(updateMotion);
+    })();
+
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    sensorsActive = true;
+    updateMasterVolume();
+    document.getElementById('masterVol').addEventListener('input', updateMasterVolume);
+    addLog('🎤 SENSORS ACTIVE — formant voice, delayed mimicry, Hebbian learning', true);
+    tonalMemory.render();
+}
+
+function stopSensors() {
+    if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+    if (audioCtx) audioCtx.close();
+    audioAnalyser = null; spectrumData = null;
+    voice = null; sensorsActive = false;
+    audioLevel = 0; motionLevel = 0;
+    cancelDelayedResponse();
+    addLog('🔇 sensors disabled');
+}
+
+function updateMasterVolume() {
+    if (!masterGainNode) return;
+    // Slider 0–200 maps to gain 0–2.4 (headroom for formant makeup compensation)
+    const v = Math.min(2.4, parseInt(document.getElementById('masterVol').value) / 100 * 1.8);
+    masterGainNode.gain.value = v;
+    document.getElementById('volValue').textContent = Math.round(v * 100) + '%';
+}
+
+// ── LOGGING ───────────────────────────────────────────────────────────────
+function addLog(msg, highlight = false) {
+    const logDiv = document.getElementById('log');
+    const entry  = document.createElement('div');
+    entry.className = highlight ? 'hi' : '';
+    entry.style.borderBottom = '1px solid #0e1020';
+    entry.style.padding = '1px 0';
+    entry.textContent = `${new Date().toLocaleTimeString('en-GB')}  ${msg}`;
+    logDiv.prepend(entry);
+    while (logDiv.children.length > 55) logDiv.removeChild(logDiv.lastChild);
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const idx = btn.dataset.tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.panel-content').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`tab-${idx}`).classList.add('active');
+    });
+});
+
+// ── BUTTON BINDINGS ───────────────────────────────────────────────────────
+document.getElementById('startBtn').addEventListener('click', () => setupSensors().catch(e => addLog('❌ ' + e.message)));
+document.getElementById('stopBtn').addEventListener('click', stopSensors);
+
+document.getElementById('chirpBtn').addEventListener('click', () => {
+    if (!voice) { addLog('Enable sensors first'); return; }
+    expressiveResponse();
+});
+document.getElementById('gruntBtn').addEventListener('click', () => {
+    if (!voice) { addLog('Enable sensors first'); return; }
+    voice.grunt(90 + Math.random() * 45, EMOTIONS[currentEmotion]?.vowel || 'u', 0.22);
+    addLog('🐾 grunt');
+});
+document.getElementById('sweepBtn').addEventListener('click', () => {
+    if (!voice) { addLog('Enable sensors first'); return; }
+    voice.sweep(200, 2400, 0.75, EMOTIONS[currentEmotion]?.vowel || 'a');
+    addLog('〰️ formant sweep');
+});
+document.getElementById('dreamBtn').addEventListener('click', () => {
+    if (!voice) { addLog('Enable sensors first'); return; }
+    voice.playMelody([110, 147, 165, 220, 165, 130, 110], [0.45, 0.38, 0.42, 0.55, 0.42, 0.5, 0.65], 'u', 0.18);
+    triggerDreamLightning();
+    addLog('💤 dream — fractal lightning cascade', true);
+});
+document.getElementById('alertBtn').addEventListener('click', () => {
+    if (!voice) { addLog('Enable sensors first'); return; }
+    voice.playMelody([880, 1100, 880, 1320, 660], [0.06, 0.05, 0.06, 0.07, 0.08], 'i', 0.26);
+    addLog('🚨 alert burst');
+});
+
+// Formant vowel buttons — pitch tracks current excitation
+['A','E','I','O','U'].forEach(v => {
+    document.getElementById(`vowel${v}`).addEventListener('click', () => {
+        if (!voice) { addLog('Enable sensors first'); return; }
+        const pitch = 130 + globalExcitation * 120 + Math.random() * 30;
+        voice.speakVowel(v.toLowerCase(), pitch, 0.75, 0.26);
+        addLog(`🗣️ vowel /${v.toLowerCase()}/ @ ${Math.round(pitch)}Hz`);
+    });
+});
+
+document.getElementById('clearMemBtn').addEventListener('click', () => tonalMemory.clear());
+document.getElementById('saveMemBtn').addEventListener('click', () => { tonalMemory.save(); document.getElementById('memStatus').textContent = `Saved ${tonalMemory.patterns.length} patterns.`; });
+document.getElementById('loadMemBtn').addEventListener('click', () => tonalMemory.load());
+document.getElementById('delayRange').addEventListener('input', e => document.getElementById('delayVal').textContent = parseFloat(e.target.value).toFixed(1) + ' s');
+
+// ── FULLSCREEN ───────────────────────────────────────────────────────────────
+function toggleFullscreen() {
+    const isFs = document.body.classList.toggle('fullscreen');
+    const btn  = document.getElementById('fsBtn');
+    if (btn) btn.textContent = isFs ? '[X]' : '[ ]';
+}
+document.getElementById('fsBtn').addEventListener('click', toggleFullscreen);
+document.getElementById('fsBtnPanel').addEventListener('click', toggleFullscreen);
+// Keyboard shortcut: F key
+document.addEventListener('keydown', e => { if (e.key === 'f' || e.key === 'F') toggleFullscreen(); });
+
+// ── THEME SELECTOR ───────────────────────────────────────────────────────────
+document.getElementById('themeRow').addEventListener('click', e => {
+    const btn = e.target.closest('[data-theme]');
+    if (!btn) return;
+    const theme = btn.dataset.theme;
+    document.body.dataset.theme = theme === 'default' ? '' : theme;
+    // Highlight active theme button
+    document.querySelectorAll('#themeRow [data-theme]').forEach(b => b.classList.remove('primary'));
+    btn.classList.add('primary');
+    addLog(`🎨 theme → ${theme.toUpperCase()}`);
+});
+
+// ── VISUAL SLIDER LABELS ─────────────────────────────────────────────────────
+[['neuronRadius','neuronRadiusVal'],['neuronAlpha','neuronAlphaVal'],
+ ['plasmaScale','plasmaScaleVal'],['plasmaBright','plasmaBrightVal']].forEach(([id, valId]) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', () => {
+        document.getElementById(valId).textContent = el.value + '%';
+    });
+});
+
+// ── VIEW TOGGLE BINDING ──────────────────────────────────────────────────
+document.getElementById('viewToggleBtn').addEventListener('click', toggleView);
+[['rotSpeedX','rotSpeedXVal'],['rotSpeedY','rotSpeedYVal'],['rotSpeedZ','rotSpeedZVal']].forEach(([id,valId]) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', () => { document.getElementById(valId).textContent = el.value; });
+});
+document.getElementById('sphereZoom').addEventListener('input', e => {
+    document.getElementById('sphereZoomVal').textContent = e.target.value + '%';
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+initSprites();
+tonalMemory.load();
+// Expose internals for the shared memory sync layer
+window._tonalMemory = tonalMemory;
+window._spawnRipple = spawnRipple;
+addLog('🌀 PLASMA ENTITY // ECHO MIND v3 — formant voice, plasma field, Hebbian synapses', true);
+
+})(); // end IIFE
+</script>
+
+<!-- Socket.io client (loaded from same server) -->
+<script src="/api/ws/socket.io.js"></script>
+<script>
+// ───────────────────────────────────────────────────────────────────────
+//  SHARED MEMORY SYNC — connects to the collective backend
+//  ─ REST API: fetch patterns on load, submit new ones after learning
+//  ─ WebSocket: receive remote pattern events in real time
+// ───────────────────────────────────────────────────────────────────────
+(function() {
+'use strict';
+
+// Stable anonymous session ID for this browser
+const SESSION_ID = (() => {
+    let id = localStorage.getItem('plasma_session_id');
+    if (!id) { id = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('plasma_session_id', id); }
+    return id;
+})();
+
+// ── tRPC-style fetch helpers ──────────────────────────────────────────────────
+const API = '/api/trpc';
+
+async function trpcQuery(proc, input) {
+    const inputParam = encodeURIComponent(JSON.stringify({ '0': { json: input ?? null } }));
+    const url = `${API}/${proc}?batch=1&input=${inputParam}`;
+    const r = await fetch(url, { credentials: 'include' });
+    if (!r.ok) throw new Error(`tRPC ${proc} failed: ${r.status}`);
+    const body = await r.json();
+    // Batch response is an array; pick first result
+    const first = Array.isArray(body) ? body[0] : body;
+    return first?.result?.data?.json ?? first?.result?.data;
+}
+
+async function trpcMutation(proc, input) {
+    const r = await fetch(`${API}/${proc}?batch=1`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ '0': { json: input ?? null } })
+    });
+    if (!r.ok) throw new Error(`tRPC ${proc} mutation failed: ${r.status}`);
+    const body = await r.json();
+    const first = Array.isArray(body) ? body[0] : body;
+    return first?.result?.data?.json ?? first?.result?.data;
+}
+
+// ── Merge remote patterns into local TonalMemory ────────────────────────────────
+function mergeRemotePattern(remotePattern, isNew) {
+    if (!window._tonalMemory) return;
+    const mem = window._tonalMemory;
+    const freqs = remotePattern.freqs;
+    const sig   = remotePattern.sig;
+    if (!freqs || freqs.length < 3) return;
+
+    // Check if we already have this fingerprint locally
+    const fp = sig.map(d => Math.round(d * 10) / 10).join(',');
+    const existing = mem.patterns.find(p => {
+        const pFp = p.sig.map(d => Math.round(d * 10) / 10).join(',');
+        return pFp === fp;
+    });
+
+    if (existing) {
+        existing.strength = Math.min(remotePattern.strength, 2.0);
+        existing.timesMatched = remotePattern.timesMatched;
+    } else {
+        mem.patterns.push({
+            id: remotePattern.id,
+            sig, freqs,
+            strength: remotePattern.strength,
+            timesMatched: remotePattern.timesMatched,
+            lastMatched: remotePattern.lastMatchedAt
+        });
+        if (mem.patterns.length > 28) mem.patterns.shift();
+        if (isNew) {
+            // Spawn a ripple to show a remote pattern arrived
+            if (window._spawnRipple) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = 80 + Math.random() * 180;
+                window._spawnRipple(350 + Math.cos(angle) * r, 350 + Math.sin(angle) * r, 'hsl(120,90%,60%)');
+            }
+            addLog(`🌐 remote pattern arrived from collective memory`, false);
+        }
+    }
+    mem.render();
+    updateSharedStats();
+}
+
+function updateSharedStats() {
+    if (!window._tonalMemory) return;
+    const el = document.getElementById('sharedPatCount');
+    if (el) el.textContent = window._tonalMemory.patterns.length;
+}
+
+// ── Load collective patterns on startup ───────────────────────────────────────
+async function loadCollectiveMemory() {
+    try {
+        const patterns = await trpcQuery('memory.getPatterns', { limit: 50 });
+        if (Array.isArray(patterns)) {
+            patterns.forEach(p => mergeRemotePattern(p, false));
+            document.getElementById('syncStatus').textContent = `Loaded ${patterns.length} collective patterns.`;
+            addLog(`🌐 collective memory: ${patterns.length} shared patterns loaded`, true);
+        }
+    } catch(e) {
+        document.getElementById('syncStatus').textContent = 'Collective memory offline — local only.';
+    }
+}
+
+// ── Load entity stats ────────────────────────────────────────────────────────────
+async function loadEntityStats() {
+    try {
+        const stats = await trpcQuery('memory.getStats');
+        if (stats) {
+            const el = d => document.getElementById(d);
+            if (el('totalHeard'))  el('totalHeard').textContent  = stats.totalPatternsLearned;
+            if (el('totalMimicry')) el('totalMimicry').textContent = stats.totalMimicryEvents;
+        }
+    } catch(e) {}
+}
+
+// ── Submit a newly learned pattern to the collective ──────────────────────────
+async function submitPatternToCollective(freqs, sig) {
+    try {
+        await trpcMutation('memory.submitPattern', { freqs, sig, sessionId: SESSION_ID });
+    } catch(e) {
+        // Fail silently — local memory still works
+    }
+}
+
+// ── Patch TonalMemory.learnPattern to also submit to server ─────────────────────
+// We wait for the IIFE's tonalMemory to be exposed on window, then patch it.
+function patchTonalMemory() {
+    if (!window._tonalMemory) { setTimeout(patchTonalMemory, 200); return; }
+    const mem = window._tonalMemory;
+    // TonalMemory uses .learn() — patch that method
+    // Returns a pattern object {id, sig, freqs, strength, ...} or null
+    const originalLearn = mem.learn.bind(mem);
+    mem.learn = function(freqSequence) {
+        const result = originalLearn(freqSequence);
+        if (result && Array.isArray(result.freqs) && Array.isArray(result.sig)) {
+            // Submit asynchronously — don't block the local flow
+            submitPatternToCollective(result.freqs, result.sig);
+        }
+        return result;
+    };
+}
+
+// ── Socket.io real-time sync ──────────────────────────────────────────────────────
+function connectSocket() {
+    if (typeof io === 'undefined') {
+        // Socket.io client not loaded yet — retry
+        setTimeout(connectSocket, 1000);
+        return;
+    }
+    const socket = io({ path: '/api/ws', transports: ['websocket', 'polling'] });
+
+    socket.on('connect', () => {
+        document.getElementById('syncStatus').textContent = 'Connected to collective mind.';
+        document.getElementById('onlineBadge').style.color = '#44ff88';
+        addLog('🌐 WebSocket connected — real-time collective sync active', true);
+        // Register as a visitor
+        trpcMutation('memory.registerVisitor').catch(() => {});
+    });
+
+    socket.on('disconnect', () => {
+        document.getElementById('syncStatus').textContent = 'Collective mind disconnected.';
+        document.getElementById('onlineBadge').style.color = '#ff4a7f';
+    });
+
+    // Remote pattern broadcast from another visitor
+    socket.on('pattern', data => {
+        if (data && data.pattern) {
+            mergeRemotePattern(data.pattern, data.isNew);
+        }
+    });
+
+    // Presence update (connected client count)
+    socket.on('presence', data => {
+        const count = data?.count ?? 1;
+        const badge = document.getElementById('onlineBadge');
+        const countEl = document.getElementById('onlineCount');
+        if (badge) badge.textContent = `● ${count}`;
+        if (countEl) countEl.textContent = count;
+    });
+}
+
+// ── Expose spawnRipple for remote pattern visual ────────────────────────────────
+window._spawnRipple = null; // will be set by the IIFE after init
+
+// ── Bootstrap ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+    loadCollectiveMemory();
+    loadEntityStats();
+    connectSocket();
+    patchTonalMemory();
+    // Refresh stats every 30 s
+    setInterval(loadEntityStats, 30000);
+});
+
+})();
+// End of shared memory sync block — no closing </script> needed here
+</script>
+</body>
+</html>
