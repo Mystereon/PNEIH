@@ -3,6 +3,10 @@ Plasma Neuron Entity in HTML
 An attempt to create a mind with a tone responsive 30 x 30 analogue neural grid 
 that behaves as a parrot would 
 https://plasmaent-jcd7ga28.manus.space/plasma.html
+I asked my AI to give me a hypnoticctamagotchi but un-anthropomorphised , i.e. not relatable
+or something an AI might play with and she came up with this ...
+
+"Prescence"
 
 900 analogue-style neurons
 sound + motion perception
